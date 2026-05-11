@@ -317,40 +317,48 @@
       pointer-events: none;
     }
     #cart-bar-inner {
-      background: var(--text); color: white;
-      border-radius: 18px; padding: 14px 20px;
-      box-shadow: 0 -2px 20px rgba(0,0,0,0.18);
-      cursor: pointer; pointer-events: all;
+      background: white; color: var(--text);
+      border-radius: 20px; padding: 14px 16px;
+      box-shadow: 0 -2px 24px rgba(0,0,0,0.10);
+      border: 1.5px solid var(--border);
+      pointer-events: all;
       transition: all 0.3s ease;
     }
-    #cart-bar-inner:hover { opacity: 0.92; transform: translateY(-2px); }
-    .cart-collapsed { display: flex; align-items: center; justify-content: space-between; }
-    .cart-count-row { display: flex; align-items: center; gap: 10px; }
+    .cart-collapsed { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; }
+    .cart-left { flex: 1; min-width: 0; }
+    .cart-count-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
     .cart-badge {
       font-size: 11px; font-weight: 800; padding: 3px 10px;
       border-radius: 100px; color: white;
     }
-    .cart-preview { font-size: 12px; opacity: 0.75; margin-top: 2px; }
-    .cart-arrow { font-size: 16px; transition: transform 0.2s; }
-    .cart-expanded { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 14px; display: none; }
+    .cart-preview { font-size: 12px; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cart-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .cart-arrow { font-size: 14px; color: var(--text-light); transition: transform 0.2s; }
+    .cart-done-btn {
+      background: var(--sage); color: white; border: none;
+      border-radius: 100px; padding: 7px 16px; font-size: 12px; font-weight: 700;
+      cursor: pointer; white-space: nowrap;
+    }
+    .cart-done-btn:hover { background: #2d5544; }
+    .cart-expanded { margin-top: 14px; border-top: 1.5px solid var(--border); padding-top: 14px; display: none; }
     .cart-expanded.open { display: block; }
     .cart-person-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
     .cart-person-name {
       font-size: 10px; font-weight: 700; padding: 2px 8px;
       border-radius: 100px; color: white; white-space: nowrap;
-      flex-shrink: 0; margin-top: 3px; opacity: 0.9; border: 1px solid rgba(255,255,255,0.3);
+      flex-shrink: 0; margin-top: 3px;
     }
     .cart-person-picks { display: flex; flex-wrap: wrap; gap: 5px; }
     .cart-pick-chip {
-      font-size: 11px; padding: 3px 9px; border-radius: 100px;
-      background: rgba(255,255,255,0.15); font-weight: 600;
+      font-size: 11px; padding: 3px 10px; border-radius: 100px;
+      background: var(--sage-light); color: var(--sage); font-weight: 600;
     }
     .cart-pick-chip.match-chip {
-      background: var(--terra); font-weight: 700;
+      background: var(--terra-light); color: var(--terra); font-weight: 700;
     }
-    .cart-match-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.12); }
-    .cart-match-label { font-size: 11px; opacity: 0.6; margin-bottom: 6px; }
-    .cart-booking-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .cart-match-section { margin-top: 10px; padding-top: 10px; border-top: 1.5px solid var(--border); }
+    .cart-match-label { font-size: 11px; color: var(--text-light); margin-bottom: 6px; }
+    .cart-booking-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
     .cart-booking-btn {
       flex: 1; min-width: 110px; padding: 9px 12px; border-radius: 100px;
       text-decoration: none; font-size: 12px; font-weight: 700;
@@ -537,7 +545,7 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
 <div id="mindmap-screen" style="display:none;">
   <!-- 하단 고정 카트 -->
   <div id="cart-bar" style="display:none;">
-    <div id="cart-bar-inner" onclick="toggleCartExpand()"></div>
+    <div id="cart-bar-inner"></div>
   </div>
 
   <div class="mm-wrap" style="padding:20px 20px 120px;">
@@ -1337,15 +1345,18 @@ function renderCartBar(mm) {
   const matchText = matches.length > 0 ? ` · 💕 매치 ${matches.length}` : '';
 
   document.getElementById('cart-bar-inner').innerHTML = `
-    <div class="cart-collapsed">
-      <div>
+    <div class="cart-collapsed" onclick="toggleCartExpand()">
+      <div class="cart-left">
         <div class="cart-count-row">
           ${myName ? `<div class="cart-badge" style="background:${COLORS[pNames.indexOf(myName) % COLORS.length]}">내 픽 ${myPicks.length}개</div>` : ''}
           ${matches.length > 0 ? `<div class="cart-badge" style="background:var(--terra)">💕 ${matches.length}개 매치</div>` : ''}
         </div>
-        ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}${matchText}</div>` : '<div class="cart-preview">원하는 여행지를 눌러서 담아봐요 👆</div>'}
+        ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}</div>` : '<div class="cart-preview">원하는 여행지를 눌러서 담아봐요 👆</div>'}
       </div>
-      <div class="cart-arrow" style="transform:rotate(${cartExpanded?'180deg':'0deg'})"">▲</div>
+      <div class="cart-right">
+        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();cartExpanded=true;renderCartBar(state.mindmap||{});">완료 ✓</button>` : ''}
+        <div class="cart-arrow" style="transform:rotate(${cartExpanded?'180deg':'0deg'})">▲</div>
+      </div>
     </div>
     ${expandedContent}
   `;
