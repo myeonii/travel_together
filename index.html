@@ -463,6 +463,10 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
     <div id="lv2-conn" class="mm-connector" style="display:none;"></div>
     <div id="lv2" class="mm-level" style="display:none;"></div>
 
+    <!-- 레벨 2b (국내 전용 세부 지역) -->
+    <div id="lv2b-conn" class="mm-connector" style="display:none;"></div>
+    <div id="lv2b" class="mm-level" style="display:none;"></div>
+
     <!-- 레벨 3 목적지 -->
     <div id="lv3-conn" class="mm-connector" style="display:none;"></div>
     <div id="lv3" style="display:none;"></div>
@@ -501,27 +505,122 @@ const COLORS = ['#8b5cf6','#ec4899','#10b981','#f59e0b','#3b82f6','#ef4444','#06
 // ─────────────────────────────
 const DESTS = {
   domestic: {
-    sea: [
-      { n:'제주도', e:'🌊', t:['비행기','카페','한라산'], k:'제주도 여행' },
-      { n:'부산',   e:'🐟', t:['해운대','광안리','맛집'], k:'부산 여행' },
-      { n:'강릉',   e:'🌅', t:['커피거리','경포대','KTX'], k:'강릉 여행' },
-      { n:'속초',   e:'🦐', t:['설악산','오징어','장사항'], k:'속초 여행' },
-    ],
-    mountain: [
-      { n:'설악산', e:'⛰️', t:['트레킹','단풍','케이블카'], k:'설악산 여행' },
-      { n:'지리산', e:'🌿', t:['둘레길','힐링','자연'], k:'지리산 여행' },
-      { n:'평창',   e:'❄️', t:['스키','별보기','청정자연'], k:'평창 여행' },
-    ],
-    city: [
-      { n:'경주', e:'🏛️', t:['역사','야경','불국사'], k:'경주 여행' },
-      { n:'전주', e:'🍜', t:['한옥','비빔밥','막걸리'], k:'전주 여행' },
-      { n:'통영', e:'⚓', t:['동피랑','케이블카','굴'], k:'통영 여행' },
-    ],
-    healing: [
-      { n:'담양', e:'🎋', t:['대나무숲','카페','여유'], k:'담양 여행' },
-      { n:'여수', e:'🌃', t:['야경','해산물','돌산'], k:'여수 여행' },
-      { n:'남해', e:'🌾', t:['독일마을','다랑이논','힐링'], k:'남해 여행' },
-    ],
+    sea: {
+      east:  { l:'동해안', e:'🌅', d:[
+        { n:'강릉',   e:'🌊', t:['커피거리','경포대','KTX'], k:'강릉 여행' },
+        { n:'속초',   e:'🦐', t:['설악산','오징어','장사항'], k:'속초 여행' },
+        { n:'양양',   e:'🏄', t:['서핑','낙산사','해변카페'], k:'양양 여행' },
+        { n:'삼척',   e:'🏖️', t:['맹방해변','환선굴','조용함'], k:'삼척 여행' },
+        { n:'동해',   e:'🌊', t:['묵호항','논골담길','대게'], k:'동해 여행' },
+      ]},
+      south: { l:'남해안', e:'⚓', d:[
+        { n:'여수',   e:'🌃', t:['야경','해산물','돌산대교'], k:'여수 여행' },
+        { n:'통영',   e:'⛵', t:['동피랑','케이블카','굴'], k:'통영 여행' },
+        { n:'거제',   e:'🐚', t:['외도','바람의언덕','해금강'], k:'거제 여행' },
+        { n:'남해',   e:'🌾', t:['독일마을','다랑이논','힐링'], k:'남해 여행' },
+        { n:'사천',   e:'✈️', t:['항공우주박물관','실안낙조','조용함'], k:'사천 여행' },
+      ]},
+      west:  { l:'서해안', e:'🌇', d:[
+        { n:'태안',   e:'🌅', t:['꽃지해변','낙조','안면도'], k:'태안 여행' },
+        { n:'보령',   e:'🌊', t:['머드축제','대천해수욕장','섬'], k:'보령 여행' },
+        { n:'군산',   e:'🏛️', t:['근대역사','히로쓰가옥','빵집'], k:'군산 여행' },
+        { n:'서천',   e:'🐦', t:['국립생태원','춘장대','조용함'], k:'서천 여행' },
+        { n:'강화도', e:'🌿', t:['고인돌','전등사','갯벌'], k:'강화도 여행' },
+      ]},
+      jeju:  { l:'제주도', e:'🍊', d:[
+        { n:'제주시',  e:'🌺', t:['한라산','흑돼지','동문시장'], k:'제주시 여행' },
+        { n:'서귀포', e:'🌊', t:['천지연폭포','올레길','감귤'], k:'서귀포 여행' },
+        { n:'우도',   e:'🐄', t:['땅콩아이스크림','산호해변','자전거'], k:'우도 여행' },
+        { n:'성산',   e:'🌋', t:['일출봉','섭지코지','고즈넉'], k:'성산 여행' },
+      ]},
+    },
+    mountain: {
+      national: { l:'국립공원', e:'🏔️', d:[
+        { n:'설악산', e:'⛰️', t:['공룡능선','울산바위','케이블카'], k:'설악산 여행' },
+        { n:'지리산', e:'🌿', t:['노고단','천왕봉','둘레길'], k:'지리산 여행' },
+        { n:'오대산', e:'❄️', t:['월정사','전나무숲','선재길'], k:'오대산 여행' },
+        { n:'주왕산', e:'🍁', t:['주방천','기암절벽','단풍'], k:'주왕산 여행' },
+        { n:'월악산', e:'🌄', t:['송계계곡','충주호','고즈넉'], k:'월악산 여행' },
+      ]},
+      valley:   { l:'계곡·청정', e:'💧', d:[
+        { n:'인제',   e:'🌊', t:['내린천','자작나무숲','래프팅'], k:'인제 여행' },
+        { n:'정선',   e:'🚂', t:['아리랑','레일바이크','오일장'], k:'정선 여행' },
+        { n:'평창',   e:'🌾', t:['대관령','양떼목장','메밀꽃'], k:'평창 여행' },
+        { n:'양구',   e:'🌿', t:['DMZ','박수근미술관','청정자연'], k:'양구 여행' },
+        { n:'횡성',   e:'🐄', t:['한우','태기산','둔내'], k:'횡성 여행' },
+      ]},
+      autumn:   { l:'단풍명소', e:'🍁', d:[
+        { n:'내장산', e:'🍂', t:['단풍터널','내장사','케이블카'], k:'내장산 여행' },
+        { n:'가야산', e:'🍁', t:['해인사','팔만대장경','단풍'], k:'가야산 여행' },
+        { n:'덕유산', e:'❄️', t:['향적봉','무주리조트','설천봉'], k:'덕유산 여행' },
+        { n:'소백산', e:'🌸', t:['철쭉','연화봉','단양'], k:'소백산 여행' },
+      ]},
+    },
+    city: {
+      history:  { l:'역사도시', e:'🏛️', d:[
+        { n:'경주',   e:'🌙', t:['불국사','첨성대','야경'], k:'경주 여행' },
+        { n:'전주',   e:'🍜', t:['한옥마을','비빔밥','막걸리'], k:'전주 여행' },
+        { n:'공주',   e:'👑', t:['공산성','무령왕릉','백제문화'], k:'공주 여행' },
+        { n:'안동',   e:'🎭', t:['하회마을','간고등어','탈춤'], k:'안동 여행' },
+        { n:'부여',   e:'🌸', t:['낙화암','궁남지','백마강'], k:'부여 여행' },
+      ]},
+      trendy:   { l:'감성·트렌디', e:'✨', d:[
+        { n:'부산',   e:'🌆', t:['해운대','감천문화마을','광안대교'], k:'부산 여행' },
+        { n:'인천',   e:'🚢', t:['개항장','차이나타운','을왕리'], k:'인천 여행' },
+        { n:'대구',   e:'🍎', t:['근대골목','동성로','사과'], k:'대구 여행' },
+        { n:'수원',   e:'🏯', t:['화성','행리단길','야경'], k:'수원 여행' },
+        { n:'광주',   e:'🎨', t:['국립아시아문화전당','양림동','예술'], k:'광주 여행' },
+      ]},
+      food:     { l:'먹방천국', e:'🍽️', d:[
+        { n:'광주',   e:'🥘', t:['한정식','떡갈비','무등산보리밥'], k:'광주 먹방 여행' },
+        { n:'전주',   e:'🍚', t:['비빔밥','콩나물국밥','피순대'], k:'전주 먹방 여행' },
+        { n:'대구',   e:'🌶️', t:['납작만두','뭉티기','동인동찜갈비'], k:'대구 먹방 여행' },
+        { n:'부산',   e:'🐟', t:['돼지국밥','밀면','씨앗호떡'], k:'부산 먹방 여행' },
+        { n:'춘천',   e:'🍗', t:['닭갈비','막국수','소양강'], k:'춘천 먹방 여행' },
+      ]},
+    },
+    healing: {
+      forest:   { l:'숲·대나무', e:'🎋', d:[
+        { n:'담양',   e:'🎋', t:['죽녹원','메타세콰이아길','카페'], k:'담양 여행' },
+        { n:'장성',   e:'🌲', t:['축령산편백숲','치유의숲','피톤치드'], k:'장성 여행' },
+        { n:'완주',   e:'🌿', t:['대둔산','비비정마을','삼례'], k:'완주 여행' },
+        { n:'남원',   e:'💕', t:['광한루원','춘향전','지리산자락'], k:'남원 여행' },
+        { n:'함양',   e:'🌳', t:['상림공원','지리산천왕봉','고즈넉'], k:'함양 여행' },
+      ]},
+      tea:      { l:'차밭·농촌', e:'🍵', d:[
+        { n:'보성',   e:'🍵', t:['녹차밭','한국차박물관','율포해수욕장'], k:'보성 여행' },
+        { n:'하동',   e:'🌿', t:['녹차시배지','최참판댁','섬진강'], k:'하동 여행' },
+        { n:'순천',   e:'🌾', t:['순천만습지','낙안읍성','정원박람회'], k:'순천 여행' },
+        { n:'광양',   e:'🌸', t:['매화마을','섬진강','백운산'], k:'광양 여행' },
+      ]},
+      island:   { l:'섬여행', e:'🏝️', d:[
+        { n:'신안',   e:'💜', t:['퍼플섬','튤립','1004섬'], k:'신안 여행' },
+        { n:'완도',   e:'🐠', t:['청산도','장보고','전복'], k:'완도 여행' },
+        { n:'진도',   e:'🌊', t:['신비의바닷길','진도개','울돌목'], k:'진도 여행' },
+        { n:'욕지도', e:'🌅', t:['고구마','낚시','조용한섬'], k:'욕지도 여행' },
+        { n:'소매물도', e:'🌿', t:['등대섬','쪽빛바다','트레킹'], k:'소매물도 여행' },
+      ]},
+    },
+    activity: {
+      ski:      { l:'스키·겨울', e:'🎿', d:[
+        { n:'평창 용평', e:'⛷️', t:['드래곤파크','발왕산','스키'], k:'용평 스키장' },
+        { n:'평창 휘닉스', e:'🏂', t:['올림픽','슬로프','빌리지'], k:'평창 휘닉스파크' },
+        { n:'무주 덕유산', e:'❄️', t:['향적봉','설천봉','리조트'], k:'무주 덕유산 리조트' },
+        { n:'가평 엘리시안', e:'🌨️', t:['가깝다','서울근교','초보OK'], k:'엘리시안 강촌' },
+      ]},
+      surf:     { l:'서핑·수상', e:'🏄', d:[
+        { n:'양양',       e:'🌊', t:['서피비치','인구해변','서핑성지'], k:'양양 서핑' },
+        { n:'부산 송정',  e:'🏄', t:['송정해수욕장','서핑','감성'], k:'부산 송정 서핑' },
+        { n:'태안',       e:'🚣', t:['카약','패들보드','낙조'], k:'태안 수상레저' },
+        { n:'가평',       e:'🛶', t:['래프팅','번지점프','캠핑'], k:'가평 수상레저' },
+      ]},
+      trek:     { l:'트레킹·길', e:'🥾', d:[
+        { n:'제주 올레길', e:'🌺', t:['26코스','바다뷰','힐링'], k:'제주 올레길' },
+        { n:'지리산 둘레길', e:'🌿', t:['300km','마을길','천천히'], k:'지리산 둘레길' },
+        { n:'북한산 둘레길', e:'🏙️', t:['서울근교','21개코스','당일치기'], k:'북한산 둘레길' },
+        { n:'DMZ 평화누리길', e:'🕊️', t:['역사','철조망','파주'], k:'DMZ 평화누리길' },
+      ]},
+    },
   },
   international: {
     near: [
@@ -793,10 +892,19 @@ function renderMM() {
   }, 80);
 
   if (mm.travel_type) showLv2(mm);
-  else { document.getElementById('lv2-conn').style.display='none'; document.getElementById('lv2').style.display='none'; }
+  else {
+    ['lv2-conn','lv2','lv2b-conn','lv2b','lv3-conn','lv3'].forEach(id => { document.getElementById(id).style.display='none'; });
+  }
 
-  if (mm.sub_type) showLv3(mm);
-  else { document.getElementById('lv3-conn').style.display='none'; document.getElementById('lv3').style.display='none'; }
+  if (mm.sub_type) {
+    if (mm.travel_type === 'domestic') showLv2b(mm);
+    else showLv3(mm);
+  } else {
+    ['lv2b-conn','lv2b','lv3-conn','lv3'].forEach(id => { document.getElementById(id).style.display='none'; });
+  }
+
+  if (mm.sub_type2) showLv3(mm);
+  else if (mm.travel_type === 'domestic') { document.getElementById('lv3-conn').style.display='none'; document.getElementById('lv3').style.display='none'; }
 
   if (mm.destination) showBooking(mm);
   else { document.getElementById('booking').style.display='none'; }
@@ -813,8 +921,11 @@ function showLv2(mm) {
   lv2.innerHTML = '';
 
   const opts = mm.travel_type === 'domestic'
-    ? [{id:'sea',e:'🌊',l:'바다',d:'해수욕장 · 해산물'},{id:'mountain',e:'⛰️',l:'산/자연',d:'트레킹 · 힐링'},
-       {id:'city',e:'🏙️',l:'도시/역사',d:'관광 · 문화'},{id:'healing',e:'🌿',l:'힐링',d:'쉬어가는 여행'}]
+    ? [{id:'sea',e:'🌊',l:'바다',d:'해수욕장 · 해산물'},
+       {id:'mountain',e:'⛰️',l:'산/자연',d:'트레킹 · 힐링'},
+       {id:'city',e:'🏙️',l:'도시/문화',d:'역사 · 감성 · 먹방'},
+       {id:'healing',e:'🌿',l:'힐링',d:'숲 · 차밭 · 섬'},
+       {id:'activity',e:'🎿',l:'액티비티',d:'스키 · 서핑 · 트레킹'}]
     : [{id:'near',e:'🛫',l:'가까운 곳',d:'2~4시간 비행'},{id:'medium',e:'✈️',l:'적당한 거리',d:'4~7시간 비행'},
        {id:'far',e:'🌏',l:'멀어도 OK',d:'8시간+ 비행'}];
 
@@ -829,7 +940,28 @@ function showLv2(mm) {
 }
 
 async function pickSub(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type:s, destination:null } });
+  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null, destination:null } });
+}
+
+function showLv2b(mm) {
+  document.getElementById('lv2b-conn').style.display = 'block';
+  const lv2b = document.getElementById('lv2b');
+  lv2b.style.display = 'flex';
+  lv2b.innerHTML = '';
+
+  const subData = DESTS.domestic[mm.sub_type] || {};
+  Object.entries(subData).forEach(([id, info], i) => {
+    const n = document.createElement('div');
+    n.className = 'mm-node' + (mm.sub_type2===id?' on': mm.sub_type2?' off':'');
+    n.innerHTML = `<span class="node-emoji">${info.e}</span><div class="node-label">${info.l}</div><div class="node-desc">${info.d.length}개 여행지</div>`;
+    if (!mm.sub_type2) n.onclick = () => pickSub2(id);
+    lv2b.appendChild(n);
+    setTimeout(() => n.classList.add('in'), 80 + i*70);
+  });
+}
+
+async function pickSub2(s) {
+  await syncState({ mindmap: { ...state.mindmap, sub_type2:s, destination:null } });
 }
 
 function showLv3(mm) {
@@ -838,7 +970,13 @@ function showLv3(mm) {
   lv3.style.display = 'block';
   lv3.innerHTML = '';
 
-  const dests = DESTS[mm.travel_type]?.[mm.sub_type] || [];
+  let dests = [];
+  if (mm.travel_type === 'domestic') {
+    dests = DESTS.domestic[mm.sub_type]?.[mm.sub_type2]?.d || [];
+  } else {
+    dests = DESTS.international[mm.sub_type] || [];
+  }
+
   const grid = document.createElement('div');
   grid.className = 'dest-grid';
 
@@ -874,7 +1012,12 @@ function showBooking(mm) {
   const olaps = Object.entries(counts)
     .filter(([,c])=>c===names.length&&names.length>=2).map(([d])=>d).sort();
 
-  const allDests = Object.values(DESTS[mm.travel_type]||{}).flat();
+  let allDests = [];
+  if (mm.travel_type === 'domestic') {
+    Object.values(DESTS.domestic).forEach(sub => Object.values(sub).forEach(r => allDests.push(...r.d)));
+  } else {
+    allDests = Object.values(DESTS.international).flat();
+  }
   const dest = allDests.find(d=>d.n===mm.destination);
 
   const links = [];
