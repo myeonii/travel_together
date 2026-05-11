@@ -309,6 +309,19 @@
     .dest-tags { display: none; }
     .dest-pickers { display: flex; gap: 2px; margin-left: 2px; }
     .dest-picker-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .friend-picks-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+      background: var(--sage-light); border-radius: 14px; padding: 8px 12px;
+      margin-bottom: 8px; width: 100%;
+    }
+    .friend-pick-name {
+      font-size: 10px; font-weight: 700; color: white;
+      padding: 2px 8px; border-radius: 100px; white-space: nowrap;
+    }
+    .friend-pick-chip {
+      font-size: 11px; font-weight: 600; color: var(--sage);
+      background: white; border-radius: 100px; padding: 2px 9px;
+    }
 
     /* 하단 고정 카트 바 */
     #cart-bar {
@@ -1164,8 +1177,7 @@ function showLv2(mm) {
     const n = document.createElement('div');
     n.className = 'mm-node' + (mm.sub_type===o.id?' on': mm.sub_type?' off':'');
     n.innerHTML = `<span class="node-emoji">${o.e}</span><div class="node-label">${o.l}</div><div class="node-desc">${o.d}</div>`;
-    if (!mm.sub_type) n.onclick = () => pickSub(o.id);
-    else if (mm.sub_type === o.id) n.onclick = () => resetFrom('sub_type');
+    n.onclick = () => mm.sub_type === o.id ? resetFrom('sub_type') : pickSub(o.id);
     lv2.appendChild(n);
     setTimeout(() => n.classList.add('in'), 80 + i*70);
   });
@@ -1186,8 +1198,7 @@ function showLv2b(mm) {
     const n = document.createElement('div');
     n.className = 'mm-node' + (mm.sub_type2===id?' on': mm.sub_type2?' off':'');
     n.innerHTML = `<span class="node-emoji">${info.e}</span><div class="node-label">${info.l}</div><div class="node-desc">${info.d.length}개 여행지</div>`;
-    if (!mm.sub_type2) n.onclick = () => pickSub2(id);
-    else if (mm.sub_type2 === id) n.onclick = () => resetFrom('sub_type2');
+    n.onclick = () => mm.sub_type2 === id ? resetFrom('sub_type2') : pickSub2(id);
     lv2b.appendChild(n);
     setTimeout(() => n.classList.add('in'), 80 + i*70);
   });
@@ -1212,6 +1223,21 @@ function showLv3(mm) {
 
   const picks = mm.picks || {};
   const pNames = Object.keys(state.participants || {});
+
+  // 친구 픽 요약 (내 것 제외 다른 참가자들의 전체 픽)
+  const others = pNames.filter(n => n !== myName);
+  others.forEach(n => {
+    const theirPicks = picks[n] || [];
+    if (!theirPicks.length) return;
+    const ni = pNames.indexOf(n);
+    const col = COLORS[ni % COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'friend-picks-row';
+    row.innerHTML = `<div class="friend-pick-name" style="background:${col}">${n}</div>`
+      + theirPicks.map(p => `<div class="friend-pick-chip">${p}</div>`).join('');
+    lv3.appendChild(row);
+  });
+
   const grid = document.createElement('div');
   grid.className = 'dest-grid';
 
