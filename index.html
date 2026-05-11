@@ -1257,7 +1257,13 @@ async function toggleDest(name) {
   const picks = { ...(state.mindmap.picks || {}) };
   const mine = [...(picks[myName] || [])];
   const idx = mine.indexOf(name);
-  if (idx > -1) mine.splice(idx, 1); else mine.push(name);
+  if (idx > -1) {
+    mine.splice(idx, 1);
+    toast(`${name} 제거됨`);
+  } else {
+    mine.push(name);
+    toast(`${name} 담겼어요 ✓`);
+  }
   picks[myName] = mine;
   await syncState({ mindmap: { ...state.mindmap, picks } });
 }
