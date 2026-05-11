@@ -1132,8 +1132,8 @@ async function pickType(t) {
 async function resetFrom(field) {
   const mm = { ...state.mindmap };
   if (field === 'travel_type') { await syncState({ mindmap: {} }); return; }
-  if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; mm.picks = {}; }
-  if (field === 'sub_type2')   { delete mm.sub_type2; mm.picks = {}; }
+  if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; }
+  if (field === 'sub_type2')   { delete mm.sub_type2; }
   await syncState({ mindmap: mm });
 }
 
@@ -1164,7 +1164,7 @@ function showLv2(mm) {
 }
 
 async function pickSub(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null, picks:{} } });
+  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null } });
 }
 
 function showLv2b(mm) {
@@ -1186,7 +1186,7 @@ function showLv2b(mm) {
 }
 
 async function pickSub2(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type2:s, picks:{} } });
+  await syncState({ mindmap: { ...state.mindmap, sub_type2:s } });
 }
 
 function showLv3(mm) {
