@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✈️ 같이 여행 가자!</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --purple: #8b5cf6;
+      --purple-light: #ede9fe;
+      --pink: #ec4899;
+      --mint: #10b981;
+      --mint-light: #d1fae5;
+      --yellow: #f59e0b;
+      --text: #1f2937;
+      --text-light: #6b7280;
+      --border: #e5e7eb;
+    }
+
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif;
+      background: #faf8ff;
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── 공통 ── */
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 4px 24px rgba(139,92,246,0.08);
+    }
+
+    .btn {
+      border: none; border-radius: 12px;
+      padding: 14px 24px; font-size: 15px;
+      font-weight: 600; cursor: pointer;
+      transition: all 0.2s; width: 100%;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: white;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(139,92,246,0.3); }
+    .btn-secondary { background: var(--purple-light); color: var(--purple); }
+    .btn-secondary:hover { background: var(--purple); color: white; transform: translateY(-2px); }
+
+    .input {
+      border: 2px solid var(--border); border-radius: 12px;
+      padding: 12px 16px; font-size: 15px; outline: none;
+      transition: border-color 0.2s; font-family: inherit; width: 100%;
+    }
+    .input:focus { border-color: var(--purple); }
+
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      color: var(--text-light); font-size: 13px; margin: 20px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Config 화면 ── */
+    #config-screen {
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .config-label {
+      font-size: 13px; font-weight: 600;
+      color: var(--text-light); margin-bottom: 6px;
+      display: block; margin-top: 14px;
+    }
+    .setup-sql {
+      background: #1e1e2e; color: #cdd6f4;
+      border-radius: 12px; padding: 16px;
+      font-size: 12px; font-family: monospace;
+      white-space: pre; overflow-x: auto;
+      margin: 16px 0; line-height: 1.6;
+    }
+
+    /* ── 홈 화면 ── */
+    #home-screen {
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .home-emoji {
+      font-size: 64px; display: block; margin-bottom: 16px; text-align: center;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .home-title {
+      font-size: 28px; font-weight: 700; margin-bottom: 8px;
+      text-align: center;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .home-desc { color: var(--text-light); text-align: center; margin-bottom: 32px; }
+    .join-row { display: flex; gap: 8px; }
+    .join-row .input {
+      flex: 1; text-transform: uppercase;
+      letter-spacing: 3px; font-weight: 700;
+    }
+    .join-row .btn { width: auto; padding: 12px 20px; }
+
+    /* ── 방 화면 ── */
+    #room-screen { max-width: 700px; margin: 0 auto; padding: 20px; }
+    .room-header {
+      display: flex; align-items: center;
+      justify-content: space-between; padding: 20px 0 24px;
+    }
+    .room-badge {
+      background: var(--purple-light); color: var(--purple);
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 2px; cursor: pointer; transition: all 0.2s;
+    }
+    .room-badge:hover { background: var(--purple); color: white; }
+
+    .section {
+      background: white; border-radius: 20px;
+      padding: 24px; margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    .section-title {
+      font-size: 16px; font-weight: 700;
+      margin-bottom: 16px; display: flex;
+      align-items: center; gap: 8px;
+    }
+
+    /* 참여자 */
+    .participants { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 20px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
+    }
+    .chip.me { border-color: currentColor; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
+    .chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .add-row { display: flex; gap: 8px; }
+    .add-row .input { flex: 1; }
+    .add-row .btn { width: auto; padding: 10px 18px; font-size: 18px; }
+
+    /* 캘린더 */
+    .cal-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .cal-nav {
+      background: none; border: none; font-size: 18px;
+      cursor: pointer; padding: 4px 8px;
+      border-radius: 8px; transition: background 0.2s;
+    }
+    .cal-nav:hover { background: var(--purple-light); }
+    .cal-month { font-weight: 700; font-size: 16px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-dh {
+      text-align: center; font-size: 12px;
+      font-weight: 600; color: var(--text-light); padding: 4px 0;
+    }
+    .cal-day {
+      aspect-ratio: 1; display: flex; align-items: center;
+      justify-content: center; border-radius: 50%;
+      font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .cal-day:hover:not(.empty):not(.past) { background: var(--purple-light); }
+    .cal-day.empty, .cal-day.past { color: var(--border); cursor: default; }
+    .cal-day.mine { background: var(--purple); color: white; }
+    .cal-day.overlap {
+      background: var(--mint); color: white;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+    }
+    .overlap-badge {
+      background: var(--mint-light); border-radius: 12px;
+      padding: 10px 14px; margin-top: 14px;
+      font-size: 14px; color: var(--mint); font-weight: 600;
+    }
+
+    .proceed-wrap { text-align: center; padding: 10px 0 30px; }
+    .btn-proceed {
+      background: linear-gradient(135deg, var(--mint), #059669);
+      color: white; border: none; border-radius: 16px;
+      padding: 16px 40px; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .btn-proceed:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(16,185,129,0.3); }
+    .proceed-hint { font-size: 12px; color: var(--text-light); margin-top: 10px; }
+
+    /* ── 마인드맵 ── */
+    #mindmap-screen { padding: 20px; }
+    .mm-wrap { max-width: 900px; margin: 0 auto; }
+    .mm-header { text-align: center; padding: 30px 0 36px; }
+    .mm-dates { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
+    .mm-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .mm-sub { color: var(--text-light); font-size: 14px; }
+
+    .mm-level { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+    .mm-connector {
+      width: 2px; height: 28px;
+      background: linear-gradient(to bottom, var(--border), var(--purple));
+      margin: 0 auto 8px;
+    }
+
+    .mm-node {
+      background: white; border: 2px solid var(--border);
+      border-radius: 16px; padding: 16px 24px;
+      cursor: pointer; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      text-align: center; min-width: 130px;
+      opacity: 0; transform: translateY(20px) scale(0.9);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .mm-node.in { opacity: 1; transform: translateY(0) scale(1); }
+    .mm-node:hover:not(.on):not(.off) {
+      border-color: var(--purple); transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.15);
+    }
+    .mm-node.on {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      border-color: transparent; color: white;
+      transform: scale(1.05); box-shadow: 0 8px 24px rgba(139,92,246,0.3);
+    }
+    .mm-node.off { opacity: 0.35; cursor: default; }
+    .node-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
+    .node-label { font-size: 14px; font-weight: 700; }
+    .node-desc { font-size: 11px; opacity: 0.65; margin-top: 4px; }
+
+    /* 목적지 카드 */
+    .dest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px; margin-top: 4px;
+    }
+    .dest-card {
+      background: white; border: 2px solid var(--border);
+      border-radius: 16px; padding: 18px; cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      text-align: center;
+      opacity: 0; transform: translateY(20px);
+    }
+    .dest-card.in { opacity: 1; transform: translateY(0); }
+    .dest-card:hover:not(.on):not(.off) {
+      border-color: var(--purple); transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.15);
+    }
+    .dest-card.on { border-color: var(--purple); background: var(--purple-light); }
+    .dest-card.off { opacity: 0.35; cursor: default; }
+    .dest-emoji { font-size: 36px; display: block; margin-bottom: 10px; }
+    .dest-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .dest-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+    .dest-tag {
+      background: var(--purple-light); color: var(--purple);
+      font-size: 10px; padding: 2px 8px;
+      border-radius: 10px; font-weight: 600;
+    }
+
+    /* 예약 섹션 */
+    .booking-wrap {
+      background: linear-gradient(135deg, #f5f3ff, #fce7f3);
+      border-radius: 20px; padding: 32px; text-align: center;
+      margin-top: 24px; opacity: 0; transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+    .booking-wrap.in { opacity: 1; transform: translateY(0); }
+    .booking-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .booking-desc { color: var(--text-light); margin-bottom: 24px; font-size: 14px; }
+    .booking-links { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .blink {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: 12px;
+      text-decoration: none; font-size: 14px; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .blink:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+    .blink-sky { background: #05203c; color: white; }
+    .blink-naver { background: #03c75a; color: white; }
+    .blink-kakao { background: #fee500; color: #3c1e1e; }
+    .blink-airbnb { background: #ff5a5f; color: white; }
+    .blink-yanolja { background: #ff0558; color: white; }
+    .blink-korail { background: #003087; color: white; }
+
+    .back-btn {
+      display: block; margin: 32px auto 0; background: none;
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 20px; cursor: pointer; color: var(--text-light);
+      font-size: 13px; font-family: inherit; transition: all 0.2s;
+    }
+    .back-btn:hover { border-color: var(--purple); color: var(--purple); }
+
+    /* 토스트 */
+    .toast {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1f2937; color: white;
+      padding: 12px 24px; border-radius: 100px;
+      font-size: 14px; font-weight: 600;
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 1000; white-space: nowrap; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* 로딩 */
+    #loading {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; background: #faf8ff;
+      animation: spin 1.5s linear infinite; z-index: 999;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px; }
+      .home-title { font-size: 24px; }
+      .dest-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">✈️</div>
+
+<!-- ── Config 화면 ── -->
+<div id="config-screen" class="screen">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="card" style="max-width:500px;width:100%;">
+      <div style="text-align:center;font-size:48px;margin-bottom:16px;">⚙️</div>
+      <div style="text-align:center;font-size:20px;font-weight:700;margin-bottom:4px;">Supabase 연결하기</div>
+      <div style="text-align:center;color:var(--text-light);font-size:14px;margin-bottom:20px;">처음 한 번만 설정하면 돼요!</div>
+
+      <div style="background:#f0fdf4;border-radius:12px;padding:14px;margin-bottom:20px;font-size:13px;color:#166534;line-height:1.7;">
+        <b>① Supabase 프로젝트 → SQL Editor에서 아래 SQL 실행</b>
+      </div>
+
+      <div class="setup-sql">CREATE TABLE travel_rooms (
+  id TEXT PRIMARY KEY,
+  state JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE travel_rooms ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</div>
+
+      <div style="background:#fef3c7;border-radius:12px;padding:14px;margin-bottom:20px;font-size:13px;color:#92400e;line-height:1.7;">
+        <b>② Project Settings → API 탭에서 URL과 anon key 복사</b>
+      </div>
+
+      <label class="config-label">Project URL</label>
+      <input type="text" id="cfg-url" class="input" placeholder="https://xxxx.supabase.co">
+
+      <label class="config-label">Anon Key (public)</label>
+      <input type="text" id="cfg-key" class="input" placeholder="eyJhbGciOiJ...">
+
+      <button class="btn btn-primary" onclick="saveConfig()" style="margin-top:20px;">저장하고 시작하기 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 홈 화면 ── -->
+<div id="home-screen" class="screen">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="card" style="max-width:400px;width:100%;">
+      <span class="home-emoji">✈️</span>
+      <h1 class="home-title">같이 여행 가자!</h1>
+      <p class="home-desc">친구랑 날짜 맞추고 여행지 골라봐요</p>
+      <button class="btn btn-primary" onclick="createRoom()" style="margin-bottom:12px;">방 만들기 🎉</button>
+      <div class="divider">또는</div>
+      <div class="join-row">
+        <input type="text" id="join-code" class="input" placeholder="ABC123" maxlength="6"
+               style="text-transform:uppercase;letter-spacing:3px;font-weight:700;"
+               onkeydown="if(event.key==='Enter')joinRoom()">
+        <button class="btn btn-secondary" onclick="joinRoom()">입장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 방 화면 ── -->
+<div id="room-screen" class="screen">
+  <div style="max-width:700px;margin:0 auto;padding:20px;">
+    <div class="room-header">
+      <div>
+        <div style="font-size:20px;font-weight:700;">✈️ 같이 여행 가자!</div>
+        <div style="font-size:13px;color:var(--text-light);">가능한 날짜를 골라봐요</div>
+      </div>
+      <div class="room-badge" id="room-badge" onclick="copyLink()" title="클릭해서 링크 복사">📋 ------</div>
+    </div>
+
+    <!-- 참여자 -->
+    <div class="section">
+      <div class="section-title">👥 참여자</div>
+      <div class="participants" id="participants"></div>
+      <div id="name-hint" style="font-size:12px;color:var(--text-light);margin-bottom:10px;display:none;">
+        👆 내 이름을 클릭해서 선택해요
+      </div>
+      <div class="add-row">
+        <input type="text" id="new-name" class="input" placeholder="이름 입력 (최대 8자)" maxlength="8"
+               onkeydown="if(event.key==='Enter')addParticipant()">
+        <button class="btn btn-secondary" onclick="addParticipant()">+</button>
+      </div>
+    </div>
+
+    <!-- 캘린더 -->
+    <div class="section">
+      <div class="section-title">📅 가능한 날짜</div>
+      <div id="need-name" style="font-size:13px;color:var(--pink);margin-bottom:10px;display:none;">
+        ⚠️ 먼저 내 이름을 선택해주세요!
+      </div>
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">◀</button>
+        <div class="cal-month" id="cal-label"></div>
+        <button class="cal-nav" onclick="changeMonth(1)">▶</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div id="overlap-badge" class="overlap-badge" style="display:none;"></div>
+    </div>
+
+    <!-- 이동 버튼 -->
+    <div class="proceed-wrap">
+      <button class="btn-proceed" onclick="goMindmap()">여행지 고르러 가기 🗺️</button>
+      <div class="proceed-hint" id="proceed-hint">날짜가 겹치면 같이 고를 수 있어요!</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 마인드맵 화면 ── -->
+<div id="mindmap-screen" style="display:none;">
+  <div class="mm-wrap" style="padding:20px;">
+    <div class="mm-header">
+      <div class="mm-dates" id="mm-dates"></div>
+      <div class="mm-title">어떤 여행을 원해? 🤔</div>
+      <div class="mm-sub">노드를 클릭하면 선택지가 펼쳐져요</div>
+    </div>
+
+    <!-- 레벨 1 -->
+    <div id="lv1" class="mm-level">
+      <div class="mm-node" id="nd-domestic" onclick="pickType('domestic')">
+        <span class="node-emoji">🇰🇷</span>
+        <div class="node-label">국내 여행</div>
+        <div class="node-desc">KTX · 버스 · 드라이브</div>
+      </div>
+      <div class="mm-node" id="nd-intl" onclick="pickType('international')">
+        <span class="node-emoji">✈️</span>
+        <div class="node-label">해외 여행</div>
+        <div class="node-desc">비행기 타고 고고</div>
+      </div>
+    </div>
+
+    <!-- 레벨 2 -->
+    <div id="lv2-conn" class="mm-connector" style="display:none;"></div>
+    <div id="lv2" class="mm-level" style="display:none;"></div>
+
+    <!-- 레벨 3 목적지 -->
+    <div id="lv3-conn" class="mm-connector" style="display:none;"></div>
+    <div id="lv3" style="display:none;"></div>
+
+    <!-- 예약 -->
+    <div id="booking" style="display:none;"></div>
+
+    <button class="back-btn" onclick="backToDates()">← 날짜 다시 고르기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────
+// 설정
+// ─────────────────────────────
+let SB_URL = localStorage.getItem('tr_url') || 'https://jkbiuhxsilrltzafyrcf.supabase.co';
+let SB_KEY = localStorage.getItem('tr_key') || 'sb_publishable_d6gUvqDF0VICwxL2E5E3EQ_y5B9MCKl';
+let sb = null;
+
+// ─────────────────────────────
+// 상태
+// ─────────────────────────────
+let roomId = null;
+let myName = null;
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let state = { participants: {}, step: 'dates', mindmap: {} };
+let channel = null;
+
+const COLORS = ['#8b5cf6','#ec4899','#10b981','#f59e0b','#3b82f6','#ef4444','#06b6d4','#f97316'];
+
+// ─────────────────────────────
+// 여행지 데이터
+// ─────────────────────────────
+const DESTS = {
+  domestic: {
+    sea: [
+      { n:'제주도', e:'🌊', t:['비행기','카페','한라산'], k:'제주도 여행' },
+      { n:'부산',   e:'🐟', t:['해운대','광안리','맛집'], k:'부산 여행' },
+      { n:'강릉',   e:'🌅', t:['커피거리','경포대','KTX'], k:'강릉 여행' },
+      { n:'속초',   e:'🦐', t:['설악산','오징어','장사항'], k:'속초 여행' },
+    ],
+    mountain: [
+      { n:'설악산', e:'⛰️', t:['트레킹','단풍','케이블카'], k:'설악산 여행' },
+      { n:'지리산', e:'🌿', t:['둘레길','힐링','자연'], k:'지리산 여행' },
+      { n:'평창',   e:'❄️', t:['스키','별보기','청정자연'], k:'평창 여행' },
+    ],
+    city: [
+      { n:'경주', e:'🏛️', t:['역사','야경','불국사'], k:'경주 여행' },
+      { n:'전주', e:'🍜', t:['한옥','비빔밥','막걸리'], k:'전주 여행' },
+      { n:'통영', e:'⚓', t:['동피랑','케이블카','굴'], k:'통영 여행' },
+    ],
+    healing: [
+      { n:'담양', e:'🎋', t:['대나무숲','카페','여유'], k:'담양 여행' },
+      { n:'여수', e:'🌃', t:['야경','해산물','돌산'], k:'여수 여행' },
+      { n:'남해', e:'🌾', t:['독일마을','다랑이논','힐링'], k:'남해 여행' },
+    ],
+  },
+  international: {
+    near: [
+      { n:'도쿄',   e:'🗼', t:['쇼핑','애니','라멘'], k:'도쿄 여행' },
+      { n:'오사카', e:'🍣', t:['먹방','유니버설','타코야키'], k:'오사카 여행' },
+      { n:'후쿠오카', e:'🍜', t:['라멘','가깝다','쇼핑'], k:'후쿠오카 여행' },
+      { n:'타이베이', e:'🧋', t:['야시장','버블티','지우펀'], k:'타이베이 여행' },
+    ],
+    medium: [
+      { n:'방콕', e:'🛕', t:['왓포','마사지','팟타이'], k:'방콕 여행' },
+      { n:'다낭', e:'🏖️', t:['바다','미식','가성비'], k:'다낭 여행' },
+      { n:'발리', e:'🌴', t:['힐링','서핑','우붓'], k:'발리 여행' },
+      { n:'홍콩', e:'🌆', t:['야경','딤섬','쇼핑'], k:'홍콩 여행' },
+    ],
+    far: [
+      { n:'파리', e:'🗽', t:['에펠탑','미술관','감성'], k:'파리 여행' },
+      { n:'로마', e:'🏛️', t:['역사','젤라또','콜로세움'], k:'로마 여행' },
+      { n:'뉴욕', e:'🗽', t:['쇼핑','브로드웨이','피자'], k:'뉴욕 여행' },
+      { n:'하와이', e:'🌺', t:['바다','서핑','힐링'], k:'하와이 여행' },
+    ],
+  },
+};
+
+// ─────────────────────────────
+// 초기화
+// ─────────────────────────────
+async function init() {
+  hide('loading');
+  if (!SB_URL || !SB_KEY) { show('config-screen'); return; }
+
+  try {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    const code = new URLSearchParams(location.search).get('room');
+    if (code) { await enterRoom(code.toUpperCase()); return; }
+    show('home-screen');
+  } catch { show('config-screen'); }
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if (!url || !key) { toast('URL과 Key를 입력해주세요!'); return; }
+  localStorage.setItem('tr_url', url);
+  localStorage.setItem('tr_key', key);
+  SB_URL = url; SB_KEY = key;
+  sb = window.supabase.createClient(url, key);
+  show('home-screen');
+}
+
+// ─────────────────────────────
+// 방 관리
+// ─────────────────────────────
+function genCode() {
+  return Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+}
+
+async function createRoom() {
+  const code = genCode();
+  const { error } = await sb.from('travel_rooms').insert({
+    id: code,
+    state: { participants:{}, step:'dates', mindmap:{} }
+  });
+  if (error) {
+    toast('오류: ' + (error.code === '42P01' ? '테이블을 먼저 만들어주세요!' : error.message));
+    return;
+  }
+  await enterRoom(code);
+}
+
+async function joinRoom() {
+  const code = document.getElementById('join-code').value.toUpperCase().trim();
+  if (code.length !== 6) { toast('방 코드는 6자리예요!'); return; }
+  await enterRoom(code);
+}
+
+async function enterRoom(code) {
+  const { data, error } = await sb.from('travel_rooms').select('*').eq('id', code).single();
+  if (error || !data) { toast('방을 찾을 수 없어요 😢'); show('home-screen'); return; }
+  roomId = code;
+  state = data.state || { participants:{}, step:'dates', mindmap:{} };
+  history.replaceState({}, '', '?room=' + code);
+  subscribe();
+  if (state.step === 'mindmap') { showMM(); }
+  else { show('room-screen'); renderRoom(); }
+}
+
+async function syncState(patch) {
+  state = { ...state, ...patch };
+  await sb.from('travel_rooms').update({ state }).eq('id', roomId);
+}
+
+function subscribe() {
+  if (channel) channel.unsubscribe();
+  channel = sb.channel('rm-' + roomId)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public',
+      table: 'travel_rooms', filter: `id=eq.${roomId}`
+    }, p => {
+      state = p.new.state;
+      if (state.step === 'mindmap') { showMM(); renderMM(); }
+      else { renderRoom(); }
+    })
+    .subscribe();
+}
+
+// ─────────────────────────────
+// 방 렌더
+// ─────────────────────────────
+function renderRoom() {
+  document.getElementById('room-badge').textContent = '📋 ' + roomId;
+  const names = Object.keys(state.participants || {});
+
+  // 참여자 칩
+  const wrap = document.getElementById('participants');
+  wrap.innerHTML = '';
+  if (names.length) document.getElementById('name-hint').style.display = 'block';
+  names.forEach((n, i) => {
+    const c = COLORS[i % COLORS.length];
+    const el = document.createElement('div');
+    el.className = 'chip' + (n === myName ? ' me' : '');
+    el.style.cssText = `background:${c}18;color:${c}`;
+    el.innerHTML = `<div class="chip-dot"></div>${n}`;
+    el.onclick = () => { myName = n; renderRoom(); toast(`${n}으로 설정!`); };
+    wrap.appendChild(el);
+  });
+
+  renderCal();
+}
+
+async function addParticipant() {
+  const inp = document.getElementById('new-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (state.participants[name]) { toast('이미 있는 이름이에요!'); return; }
+  inp.value = '';
+  const newP = { ...state.participants, [name]: { dates:[], color: COLORS[Object.keys(state.participants).length % COLORS.length] } };
+  await syncState({ participants: newP });
+  myName = name;
+  renderRoom();
+}
+
+// ─────────────────────────────
+// 캘린더
+// ─────────────────────────────
+const MON = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+function renderCal() {
+  document.getElementById('cal-label').textContent = `${calYear}년 ${MON[calMonth]}`;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+
+  // 날짜별 선택자 집계
+  const participants = state.participants || {};
+  const names = Object.keys(participants);
+  const counts = {}; // dateStr → [name,...]
+  names.forEach(n => (participants[n].dates||[]).forEach(d => {
+    if (!counts[d]) counts[d] = [];
+    counts[d].push(n);
+  }));
+
+  // 요일 헤더
+  '일월화수목금토'.split('').forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-dh'; h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) {
+    const e = document.createElement('div'); e.className = 'cal-day empty'; grid.appendChild(e);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    const isPast = new Date(calYear, calMonth, d) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const myDates = (myName && participants[myName]?.dates) || [];
+    const who = counts[ds] || [];
+    const isOverlap = who.length >= 2 && who.length === names.length && names.length >= 2;
+    const isMine = myDates.includes(ds) && !isOverlap;
+
+    el.className = 'cal-day' + (isPast?' past':'') + (isMine?' mine':'') + (isOverlap?' overlap':'');
+    el.textContent = d;
+    if (!isPast) el.onclick = () => toggleDate(ds);
+    grid.appendChild(el);
+  }
+
+  // 겹치는 날짜 요약
+  const overlaps = Object.entries(counts)
+    .filter(([,w]) => w.length >= 2 && w.length === names.length && names.length >= 2)
+    .map(([d]) => d);
+  const badge = document.getElementById('overlap-badge');
+  if (overlaps.length > 0 && names.length >= 2) {
+    badge.style.display = 'block';
+    badge.textContent = `✨ ${overlaps.length}일이 겹쳐요! 여행지 고르러 가봐요`;
+    document.getElementById('proceed-hint').textContent = `${overlaps.length}일 겹침 🎉`;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function toggleDate(ds) {
+  if (!myName) { document.getElementById('need-name').style.display='block'; toast('이름을 먼저 선택해주세요!'); return; }
+  document.getElementById('need-name').style.display = 'none';
+  const p = state.participants[myName] || { dates:[] };
+  const dates = [...(p.dates||[])];
+  const i = dates.indexOf(ds);
+  if (i > -1) dates.splice(i,1); else dates.push(ds);
+  await syncState({ participants: { ...state.participants, [myName]: { ...p, dates } } });
+  renderCal();
+}
+
+function changeMonth(d) {
+  calMonth += d;
+  if (calMonth > 11) { calMonth=0; calYear++; }
+  if (calMonth < 0)  { calMonth=11; calYear--; }
+  renderCal();
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + roomId);
+  toast('링크 복사! 친구한테 카톡해봐요 🎉');
+}
+
+// ─────────────────────────────
+// 마인드맵
+// ─────────────────────────────
+async function goMindmap() {
+  await syncState({ step:'mindmap' });
+  showMM();
+}
+
+function showMM() {
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display='none'; });
+  document.getElementById('mindmap-screen').style.display = 'block';
+
+  // 겹치는 날 표시
+  const participants = state.participants || {};
+  const names = Object.keys(participants);
+  const counts = {};
+  names.forEach(n => (participants[n].dates||[]).forEach(d => { counts[d]=(counts[d]||0)+1; }));
+  const olaps = Object.entries(counts)
+    .filter(([,c]) => c===names.length && names.length>=2)
+    .map(([d])=>d).sort();
+  document.getElementById('mm-dates').textContent =
+    olaps.length ? `📅 겹치는 날짜: ${olaps.slice(0,5).join(', ')}${olaps.length>5?' 외 '+(olaps.length-5)+'일':''}` : '';
+
+  renderMM();
+}
+
+function renderMM() {
+  const mm = state.mindmap || {};
+
+  // 레벨1 항상 표시
+  setTimeout(() => {
+    const d = document.getElementById('nd-domestic');
+    const i = document.getElementById('nd-intl');
+    d.classList.add('in'); i.classList.add('in');
+    d.className = 'mm-node in' + (mm.travel_type==='domestic'?' on': mm.travel_type?' off':'');
+    i.className = 'mm-node in' + (mm.travel_type==='international'?' on': mm.travel_type?' off':'');
+    // 선택 안된 상태면 클릭 가능하게
+    if (!mm.travel_type) {
+      d.onclick = () => pickType('domestic');
+      i.onclick = () => pickType('international');
+    }
+  }, 80);
+
+  if (mm.travel_type) showLv2(mm);
+  else { document.getElementById('lv2-conn').style.display='none'; document.getElementById('lv2').style.display='none'; }
+
+  if (mm.sub_type) showLv3(mm);
+  else { document.getElementById('lv3-conn').style.display='none'; document.getElementById('lv3').style.display='none'; }
+
+  if (mm.destination) showBooking(mm);
+  else { document.getElementById('booking').style.display='none'; }
+}
+
+async function pickType(t) {
+  await syncState({ mindmap: { travel_type:t } });
+}
+
+function showLv2(mm) {
+  document.getElementById('lv2-conn').style.display = 'block';
+  const lv2 = document.getElementById('lv2');
+  lv2.style.display = 'flex';
+  lv2.innerHTML = '';
+
+  const opts = mm.travel_type === 'domestic'
+    ? [{id:'sea',e:'🌊',l:'바다',d:'해수욕장 · 해산물'},{id:'mountain',e:'⛰️',l:'산/자연',d:'트레킹 · 힐링'},
+       {id:'city',e:'🏙️',l:'도시/역사',d:'관광 · 문화'},{id:'healing',e:'🌿',l:'힐링',d:'쉬어가는 여행'}]
+    : [{id:'near',e:'🛫',l:'가까운 곳',d:'2~4시간 비행'},{id:'medium',e:'✈️',l:'적당한 거리',d:'4~7시간 비행'},
+       {id:'far',e:'🌏',l:'멀어도 OK',d:'8시간+ 비행'}];
+
+  opts.forEach((o, i) => {
+    const n = document.createElement('div');
+    n.className = 'mm-node' + (mm.sub_type===o.id?' on': mm.sub_type?' off':'');
+    n.innerHTML = `<span class="node-emoji">${o.e}</span><div class="node-label">${o.l}</div><div class="node-desc">${o.d}</div>`;
+    if (!mm.sub_type) n.onclick = () => pickSub(o.id);
+    lv2.appendChild(n);
+    setTimeout(() => n.classList.add('in'), 80 + i*70);
+  });
+}
+
+async function pickSub(s) {
+  await syncState({ mindmap: { ...state.mindmap, sub_type:s, destination:null } });
+}
+
+function showLv3(mm) {
+  document.getElementById('lv3-conn').style.display = 'block';
+  const lv3 = document.getElementById('lv3');
+  lv3.style.display = 'block';
+  lv3.innerHTML = '';
+
+  const dests = DESTS[mm.travel_type]?.[mm.sub_type] || [];
+  const grid = document.createElement('div');
+  grid.className = 'dest-grid';
+
+  dests.forEach((dest, i) => {
+    const c = document.createElement('div');
+    c.className = 'dest-card' + (mm.destination===dest.n?' on': mm.destination?' off':'');
+    c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>
+      <div class="dest-tags">${dest.t.map(t=>`<span class="dest-tag">${t}</span>`).join('')}</div>`;
+    if (!mm.destination) c.onclick = () => pickDest(dest.n);
+    grid.appendChild(c);
+    setTimeout(() => c.classList.add('in'), 80 + i*70);
+  });
+
+  lv3.appendChild(grid);
+}
+
+async function pickDest(name) {
+  await syncState({ mindmap: { ...state.mindmap, destination:name } });
+}
+
+function showBooking(mm) {
+  const el = document.getElementById('booking');
+  el.style.display = 'block';
+
+  const isIntl = mm.travel_type === 'international';
+  const isJeju = mm.destination === '제주도';
+
+  // 겹치는 날짜
+  const participants = state.participants || {};
+  const names = Object.keys(participants);
+  const counts = {};
+  names.forEach(n => (participants[n].dates||[]).forEach(d => { counts[d]=(counts[d]||0)+1; }));
+  const olaps = Object.entries(counts)
+    .filter(([,c])=>c===names.length&&names.length>=2).map(([d])=>d).sort();
+
+  const allDests = Object.values(DESTS[mm.travel_type]||{}).flat();
+  const dest = allDests.find(d=>d.n===mm.destination);
+
+  const links = [];
+
+  if (isIntl || isJeju) {
+    links.push({ cls:'blink-sky',   label:'스카이스캐너', href:'https://www.skyscanner.co.kr' });
+    links.push({ cls:'blink-naver', label:'네이버 항공',   href:'https://flight.naver.com' });
+    links.push({ cls:'blink-kakao', label:'카약(KAYAK)',   href:'https://www.kayak.co.kr/flights' });
+  } else {
+    links.push({ cls:'blink-korail', label:'🚄 코레일',     href:'https://www.letskorail.com' });
+    links.push({ cls:'blink-naver',  label:'🚌 버스 예매',  href:'https://www.kobus.co.kr' });
+  }
+  links.push({ cls:'blink-airbnb',  label:'에어비앤비', href:`https://www.airbnb.co.kr/s/${encodeURIComponent(dest?.k||mm.destination)}` });
+  links.push({ cls:'blink-yanolja', label:'야놀자',     href:'https://www.yanolja.com' });
+
+  el.innerHTML = `<div class="booking-wrap">
+    <div style="font-size:52px;margin-bottom:12px;">${dest?.e||'🎉'}</div>
+    <div class="booking-title">${mm.destination} 결정! 🎉</div>
+    <div class="booking-desc">${olaps.length ? `${olaps[0]} ~ ${olaps[olaps.length-1]} · ${names.join(', ')}` : '날짜를 정해봐요!'}</div>
+    <div class="booking-links">${links.map(l=>`<a href="${l.href}" target="_blank" class="blink ${l.cls}">${l.label}</a>`).join('')}</div>
+  </div>`;
+
+  setTimeout(() => el.querySelector('.booking-wrap')?.classList.add('in'), 80);
+}
+
+async function backToDates() {
+  document.getElementById('mindmap-screen').style.display = 'none';
+  await syncState({ step:'dates', mindmap:{} });
+  show('room-screen');
+  renderRoom();
+}
+
+// ─────────────────────────────
+// 유틸
+// ─────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display='none'; });
+  document.getElementById('mindmap-screen').style.display = 'none';
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); el.style.display='block'; }
+}
+
+function hide(id) { document.getElementById(id).style.display='none'; }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
