@@ -287,31 +287,63 @@
     /* 목적지 태그 클라우드 */
     .dest-grid {
       display: flex; flex-wrap: wrap;
-      gap: 8px; margin-top: 8px; justify-content: center;
+      gap: 7px; margin-top: 8px; justify-content: center;
     }
     .dest-card {
       background: white; border: 1.5px solid var(--border);
-      border-radius: 100px; padding: 7px 14px;
+      border-radius: 100px; padding: 6px 13px;
       cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+      transition: all 0.2s ease; position: relative;
       opacity: 0; transform: scale(0.9);
     }
     .dest-card.in { opacity: 1; transform: scale(1); }
-    .dest-card:hover:not(.on):not(.off) {
-      border-color: var(--terra); color: var(--terra);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(201,95,74,0.15);
+    .dest-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+    .dest-card.match {
+      border-color: var(--terra); background: var(--terra-light);
+      box-shadow: 0 0 0 2px var(--terra);
     }
-    .dest-card.on {
-      background: var(--terra); border-color: transparent;
-      color: white; box-shadow: 0 4px 12px rgba(201,95,74,0.3);
-    }
-    .dest-card.on:hover { opacity: 0.88; }
-    .dest-card.on::after { content: ' ↩'; font-size: 10px; opacity: 0.7; }
-    .dest-card.off { opacity: 0.25; cursor: default; }
-    .dest-emoji { font-size: 14px; line-height: 1; }
+    .dest-emoji { font-size: 13px; line-height: 1; }
     .dest-name { font-size: 12px; font-weight: 700; }
     .dest-tags { display: none; }
+    .dest-pickers { display: flex; gap: 2px; margin-left: 2px; }
+    .dest-picker-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* 픽 요약 카트 */
+    .picks-wrap {
+      background: white; border-radius: 16px;
+      padding: 20px; margin-top: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .picks-title { font-size: 13px; font-weight: 700; color: var(--text-light); margin-bottom: 14px; }
+    .picks-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+    .picks-name {
+      font-size: 11px; font-weight: 700; color: white;
+      padding: 3px 10px; border-radius: 100px;
+      white-space: nowrap; flex-shrink: 0; margin-top: 2px;
+    }
+    .picks-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .picks-chip {
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      border-radius: 100px; border: 1.5px solid; cursor: default;
+    }
+    .match-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 12px;
+      background: var(--terra-light); margin-top: 10px;
+    }
+    .match-label { font-size: 12px; font-weight: 700; color: var(--terra); }
+    .match-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .match-chip {
+      background: var(--terra); color: white;
+      font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+    }
+    .picks-booking-btn {
+      width: 100%; margin-top: 14px; background: var(--sage);
+      color: white; border: none; border-radius: 100px;
+      padding: 12px; font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .picks-booking-btn:hover { opacity: 0.88; transform: translateY(-1px); }
 
     /* 예약 섹션 */
     .booking-wrap {
@@ -519,6 +551,9 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
     <!-- 레벨 3 목적지 -->
     <div id="lv3-conn" class="mm-connector" style="display:none;"></div>
     <div id="lv3" style="display:none;"></div>
+
+    <!-- 픽 요약 카트 -->
+    <div id="picks-summary" style="display:none;"></div>
 
     <!-- 예약 -->
     <div id="booking" style="display:none;"></div>
@@ -1060,8 +1095,13 @@ function renderMM() {
   if (mm.sub_type2) showLv3(mm);
   else if (mm.travel_type === 'domestic') { document.getElementById('lv3-conn').style.display='none'; document.getElementById('lv3').style.display='none'; }
 
-  if (mm.destination) showBooking(mm);
-  else { document.getElementById('booking').style.display='none'; }
+  // picks는 항상 렌더 (lv3 열려있을 때)
+  if (mm.sub_type2 || (mm.travel_type === 'international' && mm.sub_type)) {
+    showPicksSummary(mm);
+  } else {
+    document.getElementById('picks-summary').style.display = 'none';
+  }
+  document.getElementById('booking').style.display = 'none';
 }
 
 async function pickType(t) {
@@ -1071,9 +1111,8 @@ async function pickType(t) {
 async function resetFrom(field) {
   const mm = { ...state.mindmap };
   if (field === 'travel_type') { await syncState({ mindmap: {} }); return; }
-  if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; delete mm.destination; }
-  if (field === 'sub_type2')   { delete mm.sub_type2; delete mm.destination; }
-  if (field === 'destination') { delete mm.destination; }
+  if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; mm.picks = {}; }
+  if (field === 'sub_type2')   { delete mm.sub_type2; mm.picks = {}; }
   await syncState({ mindmap: mm });
 }
 
@@ -1104,7 +1143,7 @@ function showLv2(mm) {
 }
 
 async function pickSub(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null, destination:null } });
+  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null, picks:{} } });
 }
 
 function showLv2b(mm) {
@@ -1126,7 +1165,7 @@ function showLv2b(mm) {
 }
 
 async function pickSub2(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type2:s, destination:null } });
+  await syncState({ mindmap: { ...state.mindmap, sub_type2:s, picks:{} } });
 }
 
 function showLv3(mm) {
@@ -1142,71 +1181,113 @@ function showLv3(mm) {
     dests = DESTS.international[mm.sub_type] || [];
   }
 
+  const picks = mm.picks || {};
+  const pNames = Object.keys(state.participants || {});
   const grid = document.createElement('div');
   grid.className = 'dest-grid';
 
-  dests.forEach((dest, i) => {
+  dests.forEach((dest, idx) => {
+    const pickedBy = pNames.filter(n => (picks[n] || []).includes(dest.n));
+    const iMine = myName && (picks[myName] || []).includes(dest.n);
+    const isMatch = pickedBy.length >= 2;
+
     const c = document.createElement('div');
-    c.className = 'dest-card' + (mm.destination===dest.n?' on': mm.destination?' off':'');
-    c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>
-      <div class="dest-tags">${dest.t.map(t=>`<span class="dest-tag">${t}</span>`).join('')}</div>`;
-    if (!mm.destination) c.onclick = () => pickDest(dest.n);
-    else if (mm.destination === dest.n) c.onclick = () => resetFrom('destination');
+    c.className = 'dest-card in' + (isMatch ? ' match' : '');
+
+    // 내가 선택한 것은 내 색으로 강조
+    if (iMine && !isMatch) {
+      const myIdx = pNames.indexOf(myName);
+      const col = COLORS[myIdx % COLORS.length];
+      c.style.background = col;
+      c.style.color = 'white';
+      c.style.borderColor = 'transparent';
+    }
+
+    // 상대가 선택한 것은 테두리로 표시
+    const otherPickers = pickedBy.filter(n => n !== myName);
+    if (otherPickers.length > 0 && !iMine && !isMatch) {
+      const theirIdx = pNames.indexOf(otherPickers[0]);
+      const col = COLORS[theirIdx % COLORS.length];
+      c.style.borderColor = col;
+    }
+
+    // 누가 담았는지 점 표시
+    const dotsHtml = pickedBy.length > 0 ? `<div class="dest-pickers">${
+      pickedBy.map(n => {
+        const ni = pNames.indexOf(n);
+        return `<div class="dest-picker-dot" style="background:${isMatch?'var(--terra)':COLORS[ni%COLORS.length]}"></div>`;
+      }).join('')
+    }</div>` : '';
+
+    const matchBadge = isMatch ? `<span style="font-size:10px;margin-left:2px;">💕</span>` : '';
+
+    c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>${dotsHtml}${matchBadge}`;
+    c.onclick = () => toggleDest(dest.n);
     grid.appendChild(c);
-    setTimeout(() => c.classList.add('in'), 80 + i*70);
+    setTimeout(() => c.style.opacity = '1', 40 + idx * 30);
   });
 
   lv3.appendChild(grid);
 }
 
-async function pickDest(name) {
-  await syncState({ mindmap: { ...state.mindmap, destination:name } });
+async function toggleDest(name) {
+  if (!myName) { toast('먼저 내 이름을 선택해주세요!'); return; }
+  const picks = { ...(state.mindmap.picks || {}) };
+  const mine = [...(picks[myName] || [])];
+  const idx = mine.indexOf(name);
+  if (idx > -1) mine.splice(idx, 1); else mine.push(name);
+  picks[myName] = mine;
+  await syncState({ mindmap: { ...state.mindmap, picks } });
 }
 
-function showBooking(mm) {
-  const el = document.getElementById('booking');
+function showPicksSummary(mm) {
+  const el = document.getElementById('picks-summary');
+  const picks = mm.picks || {};
+  const pNames = Object.keys(state.participants || {});
+  const allPicked = pNames.some(n => (picks[n] || []).length > 0);
+
+  if (!allPicked) { el.style.display = 'none'; return; }
   el.style.display = 'block';
 
+  // 매치 계산
+  const allNames = [...new Set(Object.values(picks).flat())];
+  const matches = allNames.filter(n =>
+    pNames.filter(p => (picks[p] || []).includes(n)).length >= 2
+  );
+
+  // 예약 링크 생성
   const isIntl = mm.travel_type === 'international';
-  const isJeju = mm.destination === '제주도';
+  const bookingLinks = isIntl
+    ? [{ cls:'blink-sky', label:'✈️ 스카이스캐너', href:'https://www.skyscanner.co.kr' },
+       { cls:'blink-naver', label:'네이버 항공', href:'https://flight.naver.com' }]
+    : [{ cls:'blink-korail', label:'🚄 코레일', href:'https://www.letskorail.com' },
+       { cls:'blink-naver', label:'🚌 버스예매', href:'https://www.kobus.co.kr' }];
+  bookingLinks.push({ cls:'blink-airbnb', label:'🏠 에어비앤비', href:'https://www.airbnb.co.kr' });
+  bookingLinks.push({ cls:'blink-yanolja', label:'야놀자', href:'https://www.yanolja.com' });
 
-  // 겹치는 날짜
-  const participants = state.participants || {};
-  const names = Object.keys(participants);
-  const counts = {};
-  names.forEach(n => (participants[n].dates||[]).forEach(d => { counts[d]=(counts[d]||0)+1; }));
-  const olaps = Object.entries(counts)
-    .filter(([,c])=>c===names.length&&names.length>=2).map(([d])=>d).sort();
-
-  let allDests = [];
-  if (mm.travel_type === 'domestic') {
-    Object.values(DESTS.domestic).forEach(sub => Object.values(sub).forEach(r => allDests.push(...r.d)));
-  } else {
-    allDests = Object.values(DESTS.international).flat();
-  }
-  const dest = allDests.find(d=>d.n===mm.destination);
-
-  const links = [];
-
-  if (isIntl || isJeju) {
-    links.push({ cls:'blink-sky',   label:'스카이스캐너', href:'https://www.skyscanner.co.kr' });
-    links.push({ cls:'blink-naver', label:'네이버 항공',   href:'https://flight.naver.com' });
-    links.push({ cls:'blink-kakao', label:'카약(KAYAK)',   href:'https://www.kayak.co.kr/flights' });
-  } else {
-    links.push({ cls:'blink-korail', label:'🚄 코레일',     href:'https://www.letskorail.com' });
-    links.push({ cls:'blink-naver',  label:'🚌 버스 예매',  href:'https://www.kobus.co.kr' });
-  }
-  links.push({ cls:'blink-airbnb',  label:'에어비앤비', href:`https://www.airbnb.co.kr/s/${encodeURIComponent(dest?.k||mm.destination)}` });
-  links.push({ cls:'blink-yanolja', label:'야놀자',     href:'https://www.yanolja.com' });
-
-  el.innerHTML = `<div class="booking-wrap">
-    <div style="font-size:52px;margin-bottom:12px;">${dest?.e||'🎉'}</div>
-    <div class="booking-title">${mm.destination} 결정! 🎉</div>
-    <div class="booking-desc">${olaps.length ? `${olaps[0]} ~ ${olaps[olaps.length-1]} · ${names.join(', ')}` : '날짜를 정해봐요!'}</div>
-    <div class="booking-links">${links.map(l=>`<a href="${l.href}" target="_blank" class="blink ${l.cls}">${l.label}</a>`).join('')}</div>
+  el.innerHTML = `<div class="picks-wrap">
+    <div class="picks-title">🛒 각자의 위시리스트</div>
+    ${pNames.map((n, i) => {
+      const myPicks = picks[n] || [];
+      if (!myPicks.length) return '';
+      const col = COLORS[i % COLORS.length];
+      return `<div class="picks-row">
+        <div class="picks-name" style="background:${col}">${n}</div>
+        <div class="picks-chips">${myPicks.map(p => {
+          const isMatch = matches.includes(p);
+          return `<div class="picks-chip" style="border-color:${isMatch?'var(--terra)':col};color:${isMatch?'var(--terra)':col};background:${isMatch?'var(--terra-light)':'white'}">${p}${isMatch?' 💕':''}</div>`;
+        }).join('')}</div>
+      </div>`;
+    }).join('')}
+    ${matches.length > 0 ? `
+      <div class="match-row">
+        <div class="match-label">💕 둘 다 원해요</div>
+        <div class="match-chips">${matches.map(m => `<div class="match-chip">${m}</div>`).join('')}</div>
+      </div>` : ''}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+      ${bookingLinks.map(l => `<a href="${l.href}" target="_blank" class="blink ${l.cls}" style="flex:1;min-width:120px;justify-content:center;border-radius:100px;">${l.label}</a>`).join('')}
+    </div>
   </div>`;
-
-  setTimeout(() => el.querySelector('.booking-wrap')?.classList.add('in'), 80);
 }
 
 async function backToDates() {
