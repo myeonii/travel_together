@@ -441,7 +441,10 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
         <div style="font-size:20px;font-weight:700;">✈️ 같이 여행 가자!</div>
         <div style="font-size:13px;color:var(--text-light);">가능한 날짜를 골라봐요</div>
       </div>
-      <div class="room-badge" id="room-badge" onclick="copyLink()" title="클릭해서 링크 복사">📋 ------</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:#e8b86d;transition:background 0.3s;" title="실시간 연결 상태"></div>
+        <div class="room-badge" id="room-badge" onclick="copyLink()" title="클릭해서 링크 복사">📋 ------</div>
+      </div>
     </div>
 
     <!-- 참여자 -->
@@ -648,44 +651,79 @@ const DESTS = {
       ]},
     },
     activity: {
-      ski:      { l:'스키·겨울', e:'🎿', d:[
-        { n:'평창 용평', e:'⛷️', t:['드래곤파크','발왕산','스키'], k:'용평 스키장' },
-        { n:'평창 휘닉스', e:'🏂', t:['올림픽','슬로프','빌리지'], k:'평창 휘닉스파크' },
-        { n:'무주 덕유산', e:'❄️', t:['향적봉','설천봉','리조트'], k:'무주 덕유산 리조트' },
-        { n:'가평 엘리시안', e:'🌨️', t:['가깝다','서울근교','초보OK'], k:'엘리시안 강촌' },
+      ski:  { l:'스키·겨울', e:'🎿', d:[
+        { n:'평창 용평',    e:'⛷️', t:['드래곤파크','발왕산'], k:'용평 스키장' },
+        { n:'평창 휘닉스',  e:'🏂', t:['올림픽','빌리지'], k:'평창 휘닉스파크' },
+        { n:'무주 덕유산',  e:'❄️', t:['향적봉','설천봉'], k:'무주 덕유산 리조트' },
+        { n:'가평 엘리시안',e:'🌨️', t:['서울근교','초보OK'], k:'엘리시안 강촌' },
+        { n:'홍천 비발디',  e:'🎿', t:['대형리조트','워터파크'], k:'비발디파크' },
+        { n:'정선 하이원',  e:'⛰️', t:['최고해발','파우더'], k:'하이원 리조트' },
       ]},
-      surf:     { l:'서핑·수상', e:'🏄', d:[
-        { n:'양양',       e:'🌊', t:['서피비치','인구해변','서핑성지'], k:'양양 서핑' },
-        { n:'부산 송정',  e:'🏄', t:['송정해수욕장','서핑','감성'], k:'부산 송정 서핑' },
-        { n:'태안',       e:'🚣', t:['카약','패들보드','낙조'], k:'태안 수상레저' },
-        { n:'가평',       e:'🛶', t:['래프팅','번지점프','캠핑'], k:'가평 수상레저' },
+      surf: { l:'서핑·수상', e:'🏄', d:[
+        { n:'양양',      e:'🌊', t:['서피비치','서핑성지'], k:'양양 서핑' },
+        { n:'부산 송정', e:'🏄', t:['송정해변','감성'], k:'부산 송정 서핑' },
+        { n:'고성',      e:'🌅', t:['천학정','조용한바다'], k:'고성 서핑' },
+        { n:'태안',      e:'🚣', t:['카약','패들보드'], k:'태안 수상레저' },
+        { n:'가평',      e:'🛶', t:['래프팅','번지점프'], k:'가평 레저' },
+        { n:'인제 내린천',e:'🌊', t:['래프팅성지','계곡'], k:'내린천 래프팅' },
       ]},
-      trek:     { l:'트레킹·길', e:'🥾', d:[
-        { n:'제주 올레길', e:'🌺', t:['26코스','바다뷰','힐링'], k:'제주 올레길' },
-        { n:'지리산 둘레길', e:'🌿', t:['300km','마을길','천천히'], k:'지리산 둘레길' },
-        { n:'북한산 둘레길', e:'🏙️', t:['서울근교','21개코스','당일치기'], k:'북한산 둘레길' },
-        { n:'DMZ 평화누리길', e:'🕊️', t:['역사','철조망','파주'], k:'DMZ 평화누리길' },
+      trek: { l:'트레킹·길', e:'🥾', d:[
+        { n:'제주 올레길',   e:'🌺', t:['26코스','바다뷰'], k:'제주 올레길' },
+        { n:'지리산 둘레길', e:'🌿', t:['300km','마을길'], k:'지리산 둘레길' },
+        { n:'북한산 둘레길', e:'🏙️', t:['서울근교','당일치기'], k:'북한산 둘레길' },
+        { n:'해파랑길',      e:'🌊', t:['동해안','770km'], k:'해파랑길' },
+        { n:'남파랑길',      e:'🌊', t:['남해안','1470km'], k:'남파랑길' },
+        { n:'DMZ 평화누리',  e:'🕊️', t:['역사','파주'], k:'DMZ 평화누리길' },
+      ]},
+      camping: { l:'캠핑·글램핑', e:'⛺', d:[
+        { n:'가평',    e:'🌲', t:['서울근교','계곡옆'], k:'가평 캠핑' },
+        { n:'강화도',  e:'🌅', t:['바다뷰','갯벌'], k:'강화도 캠핑' },
+        { n:'남양주',  e:'🏕️', t:['한강변','당일치기'], k:'남양주 캠핑' },
+        { n:'고창',    e:'🌾', t:['청보리밭','별자리'], k:'고창 글램핑' },
+        { n:'평창',    e:'❄️', t:['별보기','고원'], k:'평창 글램핑' },
+        { n:'거제',    e:'🌊', t:['바다뷰','해안'], k:'거제 캠핑' },
       ]},
     },
   },
   international: {
     near: [
-      { n:'도쿄',   e:'🗼', t:['쇼핑','애니','라멘'], k:'도쿄 여행' },
-      { n:'오사카', e:'🍣', t:['먹방','유니버설','타코야키'], k:'오사카 여행' },
-      { n:'후쿠오카', e:'🍜', t:['라멘','가깝다','쇼핑'], k:'후쿠오카 여행' },
-      { n:'타이베이', e:'🧋', t:['야시장','버블티','지우펀'], k:'타이베이 여행' },
+      { n:'도쿄',    e:'🗼', t:['쇼핑','애니','라멘'], k:'도쿄 여행' },
+      { n:'오사카',  e:'🍣', t:['먹방','유니버설'], k:'오사카 여행' },
+      { n:'교토',    e:'⛩️', t:['기온','사찰','전통'], k:'교토 여행' },
+      { n:'후쿠오카',e:'🍜', t:['라멘','가깝다'], k:'후쿠오카 여행' },
+      { n:'삿포로',  e:'❄️', t:['눈축제','해산물'], k:'삿포로 여행' },
+      { n:'나하 오키나와',e:'🌺', t:['에메랄드바다','산호'], k:'오키나와 여행' },
+      { n:'타이베이',e:'🧋', t:['야시장','지우펀'], k:'타이베이 여행' },
+      { n:'가오슝',  e:'🌊', t:['항구','야경','로컬'], k:'가오슝 여행' },
+      { n:'마카오',  e:'🎰', t:['카지노','포르투갈감성'], k:'마카오 여행' },
     ],
     medium: [
-      { n:'방콕', e:'🛕', t:['왓포','마사지','팟타이'], k:'방콕 여행' },
-      { n:'다낭', e:'🏖️', t:['바다','미식','가성비'], k:'다낭 여행' },
-      { n:'발리', e:'🌴', t:['힐링','서핑','우붓'], k:'발리 여행' },
-      { n:'홍콩', e:'🌆', t:['야경','딤섬','쇼핑'], k:'홍콩 여행' },
+      { n:'방콕',   e:'🛕', t:['왓포','마사지'], k:'방콕 여행' },
+      { n:'치앙마이',e:'🌸', t:['사원','트레킹'], k:'치앙마이 여행' },
+      { n:'푸켓',   e:'🏖️', t:['해변','리조트'], k:'푸켓 여행' },
+      { n:'다낭',   e:'🌊', t:['바다','미식'], k:'다낭 여행' },
+      { n:'호이안', e:'🏮', t:['올드타운','야시장'], k:'호이안 여행' },
+      { n:'하노이', e:'🍜', t:['쌀국수','구시가'], k:'하노이 여행' },
+      { n:'발리',   e:'🌴', t:['힐링','우붓'], k:'발리 여행' },
+      { n:'싱가포르',e:'🌆', t:['야경','마리나베이'], k:'싱가포르 여행' },
+      { n:'홍콩',   e:'🌃', t:['딤섬','빅토리아항'], k:'홍콩 여행' },
+      { n:'쿠알라룸푸르',e:'🕌', t:['페트로나스','푸드코트'], k:'쿠알라룸푸르 여행' },
+      { n:'세부',   e:'🐠', t:['다이빙','리조트'], k:'세부 여행' },
+      { n:'보라카이',e:'🌅', t:['화이트비치','선셋'], k:'보라카이 여행' },
     ],
     far: [
-      { n:'파리', e:'🗽', t:['에펠탑','미술관','감성'], k:'파리 여행' },
-      { n:'로마', e:'🏛️', t:['역사','젤라또','콜로세움'], k:'로마 여행' },
-      { n:'뉴욕', e:'🗽', t:['쇼핑','브로드웨이','피자'], k:'뉴욕 여행' },
-      { n:'하와이', e:'🌺', t:['바다','서핑','힐링'], k:'하와이 여행' },
+      { n:'파리',    e:'🗼', t:['에펠탑','미술관'], k:'파리 여행' },
+      { n:'런던',    e:'🎡', t:['빅벤','박물관'], k:'런던 여행' },
+      { n:'로마',    e:'🏛️', t:['콜로세움','젤라또'], k:'로마 여행' },
+      { n:'바르셀로나',e:'🎨', t:['가우디','해변'], k:'바르셀로나 여행' },
+      { n:'암스테르담',e:'🚲', t:['튤립','운하'], k:'암스테르담 여행' },
+      { n:'프라하',  e:'🏰', t:['구시가지','맥주'], k:'프라하 여행' },
+      { n:'뉴욕',    e:'🗽', t:['브로드웨이','피자'], k:'뉴욕 여행' },
+      { n:'로스앤젤레스',e:'🌴', t:['할리우드','해변'], k:'LA 여행' },
+      { n:'하와이',  e:'🌺', t:['서핑','훌라'], k:'하와이 여행' },
+      { n:'시드니',  e:'🦘', t:['오페라하우스','해변'], k:'시드니 여행' },
+      { n:'두바이',  e:'🏙️', t:['부르즈칼리파','사막'], k:'두바이 여행' },
+      { n:'이스탄불',e:'🕌', t:['성소피아','바자르'], k:'이스탄불 여행' },
     ],
   },
 };
@@ -753,23 +791,37 @@ async function enterRoom(code) {
   else { show('room-screen'); renderRoom(); }
 }
 
-async function syncState(patch) {
-  state = { ...state, ...patch };
-  await sb.from('travel_rooms').update({ state }).eq('id', roomId);
-}
-
 function subscribe() {
   if (channel) channel.unsubscribe();
   channel = sb.channel('rm-' + roomId)
+    .on('broadcast', { event: 'update' }, ({ payload }) => {
+      state = payload.state;
+      onStateChange();
+    })
     .on('postgres_changes', {
       event: 'UPDATE', schema: 'public',
       table: 'travel_rooms', filter: `id=eq.${roomId}`
     }, p => {
       state = p.new.state;
-      if (state.step === 'mindmap') { showMM(); renderMM(); }
-      else { renderRoom(); }
+      onStateChange();
     })
-    .subscribe();
+    .subscribe(status => {
+      const dot = document.getElementById('conn-dot');
+      if (dot) dot.style.background = status === 'SUBSCRIBED' ? '#3b6b5a' : '#e8b86d';
+    });
+}
+
+function onStateChange() {
+  if (state.step === 'mindmap') {
+    const isOnMM = document.getElementById('mindmap-screen').style.display !== 'none';
+    if (!isOnMM) showMM(); else renderMM();
+  } else { renderRoom(); }
+}
+
+async function syncState(patch) {
+  state = { ...state, ...patch };
+  await sb.from('travel_rooms').update({ state }).eq('id', roomId);
+  channel.send({ type: 'broadcast', event: 'update', payload: { state } });
 }
 
 // ─────────────────────────────
@@ -982,19 +1034,16 @@ function renderMM() {
   const mm = state.mindmap || {};
 
   // 레벨1 항상 표시
-  setTimeout(() => {
-    const d = document.getElementById('nd-domestic');
-    const i = document.getElementById('nd-intl');
-    d.classList.add('in'); i.classList.add('in');
-    d.className = 'mm-node in' + (mm.travel_type==='domestic'?' on': mm.travel_type?' off':'');
-    i.className = 'mm-node in' + (mm.travel_type==='international'?' on': mm.travel_type?' off':'');
-    if (!mm.travel_type) {
-      d.onclick = () => pickType('domestic');
-      i.onclick = () => pickType('international');
-    } else {
-      d.onclick = i.onclick = () => resetFrom('travel_type');
-    }
-  }, 80);
+  const d = document.getElementById('nd-domestic');
+  const i = document.getElementById('nd-intl');
+  d.className = 'mm-node in' + (mm.travel_type==='domestic'?' on': mm.travel_type?' off':'');
+  i.className = 'mm-node in' + (mm.travel_type==='international'?' on': mm.travel_type?' off':'');
+  if (!mm.travel_type) {
+    d.onclick = () => pickType('domestic');
+    i.onclick = () => pickType('international');
+  } else {
+    d.onclick = i.onclick = () => resetFrom('travel_type');
+  }
 
   if (mm.travel_type) showLv2(mm);
   else {
