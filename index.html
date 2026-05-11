@@ -234,6 +234,12 @@
       border-color: transparent; color: white;
       transform: scale(1.05); box-shadow: 0 8px 24px rgba(139,92,246,0.3);
     }
+    .mm-node.on:hover { transform: scale(1.05); opacity: 0.85; }
+    .mm-node.on::after {
+      content: '↩ 취소'; font-size: 10px; opacity: 0;
+      display: block; margin-top: 4px; transition: opacity 0.2s;
+    }
+    .mm-node.on:hover::after { opacity: 0.8; }
     .mm-node.off { opacity: 0.35; cursor: default; }
     .node-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
     .node-label { font-size: 14px; font-weight: 700; }
@@ -884,10 +890,11 @@ function renderMM() {
     d.classList.add('in'); i.classList.add('in');
     d.className = 'mm-node in' + (mm.travel_type==='domestic'?' on': mm.travel_type?' off':'');
     i.className = 'mm-node in' + (mm.travel_type==='international'?' on': mm.travel_type?' off':'');
-    // 선택 안된 상태면 클릭 가능하게
     if (!mm.travel_type) {
       d.onclick = () => pickType('domestic');
       i.onclick = () => pickType('international');
+    } else {
+      d.onclick = i.onclick = () => resetFrom('travel_type');
     }
   }, 80);
 
@@ -914,6 +921,15 @@ async function pickType(t) {
   await syncState({ mindmap: { travel_type:t } });
 }
 
+async function resetFrom(field) {
+  const mm = { ...state.mindmap };
+  if (field === 'travel_type') { await syncState({ mindmap: {} }); return; }
+  if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; delete mm.destination; }
+  if (field === 'sub_type2')   { delete mm.sub_type2; delete mm.destination; }
+  if (field === 'destination') { delete mm.destination; }
+  await syncState({ mindmap: mm });
+}
+
 function showLv2(mm) {
   document.getElementById('lv2-conn').style.display = 'block';
   const lv2 = document.getElementById('lv2');
@@ -934,6 +950,7 @@ function showLv2(mm) {
     n.className = 'mm-node' + (mm.sub_type===o.id?' on': mm.sub_type?' off':'');
     n.innerHTML = `<span class="node-emoji">${o.e}</span><div class="node-label">${o.l}</div><div class="node-desc">${o.d}</div>`;
     if (!mm.sub_type) n.onclick = () => pickSub(o.id);
+    else if (mm.sub_type === o.id) n.onclick = () => resetFrom('sub_type');
     lv2.appendChild(n);
     setTimeout(() => n.classList.add('in'), 80 + i*70);
   });
@@ -955,6 +972,7 @@ function showLv2b(mm) {
     n.className = 'mm-node' + (mm.sub_type2===id?' on': mm.sub_type2?' off':'');
     n.innerHTML = `<span class="node-emoji">${info.e}</span><div class="node-label">${info.l}</div><div class="node-desc">${info.d.length}개 여행지</div>`;
     if (!mm.sub_type2) n.onclick = () => pickSub2(id);
+    else if (mm.sub_type2 === id) n.onclick = () => resetFrom('sub_type2');
     lv2b.appendChild(n);
     setTimeout(() => n.classList.add('in'), 80 + i*70);
   });
@@ -986,6 +1004,7 @@ function showLv3(mm) {
     c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>
       <div class="dest-tags">${dest.t.map(t=>`<span class="dest-tag">${t}</span>`).join('')}</div>`;
     if (!mm.destination) c.onclick = () => pickDest(dest.n);
+    else if (mm.destination === dest.n) c.onclick = () => resetFrom('destination');
     grid.appendChild(c);
     setTimeout(() => c.classList.add('in'), 80 + i*70);
   });
