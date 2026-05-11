@@ -863,6 +863,9 @@ async function enterRoom(code) {
   roomId = code;
   state = data.state || { participants:{}, step:'dates', mindmap:{} };
   history.replaceState({}, '', '?room=' + code);
+  // 이전에 사용한 이름 복원
+  const saved = localStorage.getItem('tt_name_' + code);
+  if (saved && state.participants && state.participants[saved]) myName = saved;
   subscribe();
   if (state.step === 'mindmap') { showMM(); }
   else { show('room-screen'); renderRoom(); }
@@ -918,7 +921,7 @@ function renderRoom() {
     el.className = 'chip' + (n === myName ? ' me' : '');
     el.style.cssText = `background:${c}18;color:${c}`;
     el.innerHTML = `<div class="chip-dot"></div>${n}`;
-    el.onclick = () => { myName = n; renderRoom(); toast(`${n}으로 설정!`); };
+    el.onclick = () => { myName = n; localStorage.setItem('tt_name_' + roomId, n); renderRoom(); toast(`${n}으로 설정!`); };
     wrap.appendChild(el);
   });
 
@@ -934,6 +937,7 @@ async function addParticipant() {
   const newP = { ...state.participants, [name]: { dates:[], color: COLORS[Object.keys(state.participants).length % COLORS.length] } };
   await syncState({ participants: newP });
   myName = name;
+  localStorage.setItem('tt_name_' + roomId, name);
   renderRoom();
 }
 
