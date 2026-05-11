@@ -179,8 +179,9 @@
       aspect-ratio: 1; display: flex; align-items: center;
       justify-content: center; border-radius: 50%;
       font-size: 13px; cursor: pointer; transition: all 0.15s;
+      position: relative; flex-direction: column; gap: 1px;
     }
-    .cal-day:hover:not(.empty):not(.past) { background: var(--purple-light); }
+    .cal-day:hover:not(.empty):not(.past) { background: var(--sage-light); }
     .cal-day.empty, .cal-day.past { color: var(--border); cursor: default; }
     .cal-day.mine { background: var(--sage); color: white; }
     .cal-day.overlap {
@@ -189,12 +190,41 @@
     }
     @keyframes pulse {
       0%,100% { box-shadow: 0 0 0 0 rgba(201,95,74,0.4); }
-      50% { box-shadow: 0 0 0 6px rgba(201,95,74,0); }
+      50% { box-shadow: 0 0 0 5px rgba(201,95,74,0); }
+    }
+    .cal-dots {
+      display: flex; gap: 2px; align-items: center;
+      position: absolute; bottom: 3px;
+    }
+    .cal-dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      flex-shrink: 0;
     }
     .overlap-badge {
       background: var(--terra-light); border-radius: 12px;
       padding: 10px 14px; margin-top: 14px;
       font-size: 14px; color: var(--terra); font-weight: 600;
+    }
+    /* 참여자별 날짜 목록 */
+    .date-list {
+      margin-top: 16px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .date-list-row {
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .date-list-name {
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+      padding: 3px 10px; border-radius: 100px; color: white; flex-shrink: 0;
+    }
+    .date-list-dates {
+      display: flex; flex-wrap: wrap; gap: 4px;
+    }
+    .date-list-chip {
+      font-size: 11px; padding: 2px 8px; border-radius: 100px;
+      font-weight: 600; border: 1.5px solid;
+    }
+    .date-list-chip.overlap-chip {
+      font-weight: 700;
     }
 
     .proceed-wrap { text-align: center; padding: 10px 0 30px; }
@@ -441,6 +471,7 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
       </div>
       <div class="cal-grid" id="cal-grid"></div>
       <div id="overlap-badge" class="overlap-badge" style="display:none;"></div>
+      <div id="date-list" class="date-list"></div>
     </div>
 
     <!-- 이동 버튼 -->
@@ -821,23 +852,81 @@ function renderCal() {
     const isMine = myDates.includes(ds) && !isOverlap;
 
     el.className = 'cal-day' + (isPast?' past':'') + (isMine?' mine':'') + (isOverlap?' overlap':'');
-    el.textContent = d;
+
+    const numSpan = document.createElement('span');
+    numSpan.textContent = d;
+    el.appendChild(numSpan);
+
+    // 참여자 색 점 (겹치는 날 제외, 과거 제외, 누군가 선택한 날만)
+    if (!isOverlap && !isPast && who.length > 0) {
+      const dots = document.createElement('div');
+      dots.className = 'cal-dots';
+      who.forEach(n => {
+        const idx = names.indexOf(n);
+        const dot = document.createElement('div');
+        dot.className = 'cal-dot';
+        dot.style.background = isMine ? 'rgba(255,255,255,0.7)' : COLORS[idx % COLORS.length];
+        dots.appendChild(dot);
+      });
+      el.appendChild(dots);
+    }
+
     if (!isPast) el.onclick = () => toggleDate(ds);
     grid.appendChild(el);
   }
 
-  // 겹치는 날짜 요약
+  // 겹치는 날짜 요약 배지
   const overlaps = Object.entries(counts)
     .filter(([,w]) => w.length >= 2 && w.length === names.length && names.length >= 2)
-    .map(([d]) => d);
+    .map(([d]) => d).sort();
   const badge = document.getElementById('overlap-badge');
   if (overlaps.length > 0 && names.length >= 2) {
     badge.style.display = 'block';
-    badge.textContent = `✨ ${overlaps.length}일이 겹쳐요! 여행지 고르러 가봐요`;
+    badge.textContent = `✨ ${overlaps.length}일 겹쳐요!`;
     document.getElementById('proceed-hint').textContent = `${overlaps.length}일 겹침 🎉`;
   } else {
     badge.style.display = 'none';
   }
+
+  // 참여자별 날짜 목록
+  const listEl = document.getElementById('date-list');
+  listEl.innerHTML = '';
+  if (names.length === 0) return;
+
+  names.forEach((n, i) => {
+    const color = COLORS[i % COLORS.length];
+    const mySelected = (participants[n].dates || [])
+      .filter(d => d.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`))
+      .sort();
+    if (mySelected.length === 0) return;
+
+    const row = document.createElement('div');
+    row.className = 'date-list-row';
+
+    const nameTag = document.createElement('div');
+    nameTag.className = 'date-list-name';
+    nameTag.style.background = color;
+    nameTag.textContent = n;
+    row.appendChild(nameTag);
+
+    const datesWrap = document.createElement('div');
+    datesWrap.className = 'date-list-dates';
+
+    mySelected.forEach(ds => {
+      const isOlap = overlaps.includes(ds);
+      const chip = document.createElement('div');
+      chip.className = 'date-list-chip' + (isOlap ? ' overlap-chip' : '');
+      chip.style.borderColor = isOlap ? 'var(--terra)' : color;
+      chip.style.color = isOlap ? 'var(--terra)' : color;
+      chip.style.background = isOlap ? 'var(--terra-light)' : 'white';
+      const day = parseInt(ds.split('-')[2]);
+      chip.textContent = `${day}일` + (isOlap ? ' ✨' : '');
+      datesWrap.appendChild(chip);
+    });
+
+    row.appendChild(datesWrap);
+    listEl.appendChild(row);
+  });
 }
 
 async function toggleDate(ds) {
