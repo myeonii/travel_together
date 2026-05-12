@@ -186,11 +186,17 @@
     .cal-day.mine { background: var(--sage); color: white; }
     .cal-day.overlap {
       background: var(--terra); color: white;
-      animation: pulse 2s ease-in-out infinite;
+      font-weight: 800;
+      animation: pulse 1.5s ease-in-out infinite;
+      box-shadow: 0 4px 12px rgba(201,95,74,0.4);
+    }
+    .cal-day.overlap::before {
+      content: '⭐'; position: absolute; top: -8px; right: -4px;
+      font-size: 10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
     @keyframes pulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(201,95,74,0.4); }
-      50% { box-shadow: 0 0 0 5px rgba(201,95,74,0); }
+      0%,100% { transform: scale(1); box-shadow: 0 4px 12px rgba(201,95,74,0.4); }
+      50% { transform: scale(1.05); box-shadow: 0 6px 16px rgba(201,95,74,0.6); }
     }
     .cal-dots {
       display: flex; gap: 2px; align-items: center;
@@ -201,9 +207,12 @@
       flex-shrink: 0;
     }
     .overlap-badge {
-      background: var(--terra-light); border-radius: 12px;
-      padding: 10px 14px; margin-top: 14px;
-      font-size: 14px; color: var(--terra); font-weight: 600;
+      background: var(--terra); border-radius: 12px;
+      padding: 12px 16px; margin-top: 14px;
+      font-size: 14px; color: white; font-weight: 700;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(201,95,74,0.25);
+      border: 2px solid white;
     }
     /* 참여자별 날짜 목록 */
     .date-list {
@@ -224,7 +233,9 @@
       font-weight: 600; border: 1.5px solid;
     }
     .date-list-chip.overlap-chip {
-      font-weight: 700;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(201,95,74,0.2);
+      border-width: 2px;
     }
 
     .proceed-wrap { text-align: center; padding: 10px 0 30px; }
@@ -1076,8 +1087,8 @@ function renderCal() {
       const chip = document.createElement('div');
       chip.className = 'date-list-chip' + (isOlap ? ' overlap-chip' : '');
       chip.style.borderColor = isOlap ? 'var(--terra)' : color;
-      chip.style.color = isOlap ? 'var(--terra)' : color;
-      chip.style.background = isOlap ? 'var(--terra-light)' : 'white';
+      chip.style.color = isOlap ? 'white' : color;
+      chip.style.background = isOlap ? 'var(--terra)' : 'white';
       const day = parseInt(ds.split('-')[2]);
       chip.textContent = `${day}일` + (isOlap ? ' ✨' : '');
       datesWrap.appendChild(chip);
