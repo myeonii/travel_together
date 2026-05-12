@@ -244,7 +244,25 @@
     .mm-header { text-align: center; padding: 30px 0 36px; }
     .mm-dates { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
     .mm-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-    .mm-sub { color: var(--text-light); font-size: 14px; }
+    .mm-sub { color: var(--text-light); font-size: 14px; margin-bottom: 12px; }
+
+    /* 글로벌 요약 영역 */
+    .mm-summary-box {
+      background: white; border-radius: 16px; padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 24px;
+      text-align: left; display: none; border: 1.5px solid var(--border);
+    }
+    .mm-summary-section { margin-bottom: 12px; }
+    .mm-summary-section:last-child { margin-bottom: 0; }
+    .mm-summary-label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; }
+    .mm-summary-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mm-summary-chip {
+      font-size: 11px; padding: 4px 12px; border-radius: 100px;
+      font-weight: 600; display: flex; align-items: center; gap: 4px;
+    }
+    .mm-summary-chip.mine { background: var(--sage-light); color: var(--sage); border: 1.5px dashed var(--sage); }
+    .mm-summary-chip.friend { background: #f8f8f8; color: var(--text-light); border: 1.5px solid var(--border); }
+    .mm-summary-chip.match { background: var(--terra-light); color: var(--terra); border: 1.5px solid var(--terra); }
 
     .mm-level { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
     .mm-connector {
@@ -308,7 +326,8 @@
     .dest-check { font-size: 11px; margin-left: 1px; }
     .dest-tags { display: none; }
     .dest-pickers { display: flex; gap: 2px; margin-left: 2px; }
-    .dest-picker-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .dest-picker-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dest-picker-name { font-size: 9px; opacity: 0.8; margin-left: 2px; font-weight: 700; }
     .friend-picks-row {
       display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
       background: var(--sage-light); border-radius: 14px; padding: 8px 12px;
@@ -566,6 +585,9 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
       <div class="mm-dates" id="mm-dates"></div>
       <div class="mm-title">어떤 여행을 원해? 🤔</div>
       <div class="mm-sub">노드를 클릭하면 선택지가 펼쳐져요</div>
+      
+      <!-- 누적 선택 정보 & 친구 픽 실시간 참고 영역 -->
+      <div id="mm-global-summary" class="mm-summary-box"></div>
     </div>
 
     <!-- 레벨 1 -->
@@ -623,6 +645,7 @@ let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let state = { participants: {}, step: 'dates', mindmap: {} };
 let channel = null;
+let localPicks = [];
 
 const COLORS = ['#3b6b5a','#c95f4a','#b07d3a','#5a7d9a','#7a5c8a','#4a8a6a','#c97a3a','#6a5a9a'];
 
@@ -893,6 +916,9 @@ function subscribe() {
 
 function onStateChange() {
   if (state.step === 'mindmap') {
+    // 만약 전체가 리셋되었다면 로컬 픽도 비워줌
+    if (!state.mindmap || !state.mindmap.travel_type) localPicks = [];
+
     const isOnMM = document.getElementById('mindmap-screen').style.display !== 'none';
     if (!isOnMM) showMM(); else renderMM();
   } else { renderRoom(); }
@@ -1097,6 +1123,10 @@ function showMM() {
   document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display='none'; });
   document.getElementById('mindmap-screen').style.display = 'block';
 
+  // 로컬 픽 초기화 (현재 사용자의 저장된 픽 가져오기)
+  const mm = state.mindmap || { picks: {} };
+  localPicks = [...(mm.picks && mm.picks[myName] ? mm.picks[myName] : [])];
+
   // 겹치는 날 표시
   const participants = state.participants || {};
   const names = Object.keys(participants);
@@ -1113,6 +1143,56 @@ function showMM() {
 
 function renderMM() {
   const mm = state.mindmap || {};
+  const pNames = Object.keys(state.participants || {});
+  const picks = { ...(mm.picks || {}) };
+  if (myName) picks[myName] = localPicks;
+
+  // 글로벌 요약 영역 업데이트 (내 픽 + 친구 픽 실시간 참고)
+  const gSummary = document.getElementById('mm-global-summary');
+  const allPickedNames = [...new Set(Object.values(picks).flat())];
+  const matches = allPickedNames.filter(dest =>
+    pNames.filter(p => (picks[p] || []).includes(dest)).length >= 2
+  );
+
+  if (allPickedNames.length > 0) {
+    gSummary.style.display = 'block';
+    let html = '';
+    
+    // 내 선택 (저장 전 상태 포함)
+    if (myName && localPicks.length > 0) {
+      html += `<div class="mm-summary-section">
+        <div class="mm-summary-label">🙋 내가 선택 중 (저장 전)</div>
+        <div class="mm-summary-chips">
+          ${localPicks.map(p => {
+            const isMatch = matches.includes(p);
+            return `<div class="mm-summary-chip ${isMatch ? 'match' : 'mine'}">${p}${isMatch ? ' 💕' : ''}</div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    // 친구들의 선택 (이미 저장된 상태)
+    const others = pNames.filter(n => n !== myName);
+    const friendPicks = others.filter(n => (mm.picks?.[n] || []).length > 0);
+    if (friendPicks.length > 0) {
+      html += `<div class="mm-summary-section">
+        <div class="mm-summary-label">👥 친구들이 저장한 곳</div>
+        <div class="mm-summary-chips">
+          ${friendPicks.map(n => {
+            const pIdx = pNames.indexOf(n);
+            const col = COLORS[pIdx % COLORS.length];
+            return (mm.picks[n] || []).map(p => {
+              const isMatch = matches.includes(p);
+              return `<div class="mm-summary-chip ${isMatch ? 'match' : 'friend'}" style="${!isMatch ? `border-color:${col};color:${col}` : ''}">${isMatch ? '' : `<span style="font-size:9px;opacity:0.7;margin-right:2px;">${n}</span>`}${p}${isMatch ? ' 💕' : ''}</div>`;
+            }).flat();
+          }).flat().join('')}
+        </div>
+      </div>`;
+    }
+    gSummary.innerHTML = html;
+  } else {
+    gSummary.style.display = 'none';
+  }
 
   // 레벨1 항상 표시
   const d = document.getElementById('nd-domestic');
@@ -1132,14 +1212,18 @@ function renderMM() {
   }
 
   if (mm.sub_type) {
-    if (mm.travel_type === 'domestic') showLv2b(mm);
-    else showLv3(mm);
+    if (mm.travel_type === 'domestic') {
+      showLv2b(mm);
+      showLv3(mm); // 국내도 테마 선택 시 바로 하위 목록 노출
+    } else {
+      showLv3(mm);
+    }
   } else {
     ['lv2b-conn','lv2b','lv3-conn','lv3'].forEach(id => { document.getElementById(id).style.display='none'; });
   }
 
   if (mm.sub_type2) showLv3(mm);
-  else if (mm.travel_type === 'domestic') { document.getElementById('lv3-conn').style.display='none'; document.getElementById('lv3').style.display='none'; }
+  // (기존 else if mm.travel_type === 'domestic' 관련 lv3 숨김 로직 제거)
 
   // picks는 항상 렌더 (lv3 열려있을 때)
   if (mm.sub_type2 || (mm.travel_type === 'international' && mm.sub_type)) {
@@ -1151,12 +1235,17 @@ function renderMM() {
 }
 
 async function pickType(t) {
+  localPicks = [];
   await syncState({ mindmap: { travel_type:t } });
 }
 
 async function resetFrom(field) {
   const mm = { ...state.mindmap };
-  if (field === 'travel_type') { await syncState({ mindmap: {} }); return; }
+  if (field === 'travel_type') {
+    localPicks = [];
+    await syncState({ mindmap: {} });
+    return;
+  }
   if (field === 'sub_type')    { delete mm.sub_type; delete mm.sub_type2; }
   if (field === 'sub_type2')   { delete mm.sub_type2; }
   await syncState({ mindmap: mm });
@@ -1170,10 +1259,10 @@ function showLv2(mm) {
 
   const opts = mm.travel_type === 'domestic'
     ? [{id:'sea',e:'🌊',l:'바다',d:'해수욕장 · 해산물'},
-       {id:'mountain',e:'⛰️',l:'산/자연',d:'트레킹 · 힐링'},
        {id:'city',e:'🏙️',l:'도시/문화',d:'역사 · 감성 · 먹방'},
        {id:'healing',e:'🌿',l:'힐링',d:'숲 · 차밭 · 섬'},
        {id:'activity',e:'🎿',l:'액티비티',d:'스키 · 서핑 · 트레킹'}]
+
     : [{id:'near',e:'🛫',l:'가까운 곳',d:'2~4시간 비행'},{id:'medium',e:'✈️',l:'적당한 거리',d:'4~7시간 비행'},
        {id:'far',e:'🌏',l:'멀어도 OK',d:'8시간+ 비행'}];
 
@@ -1218,92 +1307,94 @@ function showLv3(mm) {
   lv3.style.display = 'block';
   lv3.innerHTML = '';
 
-  let dests = [];
-  if (mm.travel_type === 'domestic') {
-    dests = DESTS.domestic[mm.sub_type]?.[mm.sub_type2]?.d || [];
-  } else {
-    dests = DESTS.international[mm.sub_type] || [];
-  }
-
-  const picks = mm.picks || {};
+  const picks = { ...(mm.picks || {}) };
+  if (myName) picks[myName] = localPicks;
   const pNames = Object.keys(state.participants || {});
 
-  // 친구 픽 요약 (내 것 제외 다른 참가자들의 전체 픽)
-  const others = pNames.filter(n => n !== myName);
-  others.forEach(n => {
-    const theirPicks = picks[n] || [];
-    if (!theirPicks.length) return;
-    const ni = pNames.indexOf(n);
-    const col = COLORS[ni % COLORS.length];
-    const row = document.createElement('div');
-    row.className = 'friend-picks-row';
-    row.innerHTML = `<div class="friend-pick-name" style="background:${col}">${n}</div>`
-      + theirPicks.map(p => `<div class="friend-pick-chip">${p}</div>`).join('');
-    lv3.appendChild(row);
-  });
-
-  const grid = document.createElement('div');
-  grid.className = 'dest-grid';
-
-  dests.forEach((dest, idx) => {
-    const pickedBy = pNames.filter(n => (picks[n] || []).includes(dest.n));
-    const iMine = myName && (picks[myName] || []).includes(dest.n);
-    const isMatch = pickedBy.length >= 2;
-
-    const c = document.createElement('div');
-    c.className = 'dest-card in' + (isMatch ? ' match' : '');
-
-    // 내가 선택한 것은 내 색으로 강조
-    if (iMine && !isMatch) {
-      const myIdx = pNames.indexOf(myName);
-      const col = COLORS[myIdx % COLORS.length];
-      c.style.background = col;
-      c.style.color = 'white';
-      c.style.borderColor = 'transparent';
+  // 렌더링 헬퍼 함수
+  const renderGroup = (groupLabel, dests, groupIcon) => {
+    if (groupLabel) {
+      const header = document.createElement('div');
+      header.className = 'mm-summary-label';
+      header.style.textAlign = 'center';
+      header.style.margin = '20px 0 10px';
+      header.innerHTML = `${groupIcon || '📍'} ${groupLabel}`;
+      lv3.appendChild(header);
     }
 
-    // 상대가 선택한 것은 테두리로 표시
-    const otherPickers = pickedBy.filter(n => n !== myName);
-    if (otherPickers.length > 0 && !iMine && !isMatch) {
-      const theirIdx = pNames.indexOf(otherPickers[0]);
-      const col = COLORS[theirIdx % COLORS.length];
-      c.style.borderColor = col;
+    const grid = document.createElement('div');
+    grid.className = 'dest-grid';
+    dests.forEach((dest, idx) => {
+      const pickedBy = pNames.filter(n => (picks[n] || []).includes(dest.n));
+      const iMine = myName && (picks[myName] || []).includes(dest.n);
+      const isMatch = pickedBy.length >= 2;
+      const c = document.createElement('div');
+      c.className = 'dest-card in' + (isMatch ? ' match' : '');
+      if (iMine && !isMatch) {
+        const myIdx = pNames.indexOf(myName);
+        c.style.background = COLORS[myIdx % COLORS.length];
+        c.style.color = 'white'; c.style.borderColor = 'transparent';
+      }
+      const otherPickers = pickedBy.filter(n => n !== myName);
+      if (otherPickers.length > 0 && !iMine && !isMatch) {
+        c.style.borderColor = COLORS[pNames.indexOf(otherPickers[0]) % COLORS.length];
+      }
+      const dotsHtml = pickedBy.length > 0 ? `<div class="dest-pickers">${
+        pickedBy.map(n => {
+          const ni = pNames.indexOf(n);
+          const col = isMatch ? 'var(--terra)' : COLORS[ni % COLORS.length];
+          return `<div style="display:flex;align-items:center;"><div class="dest-picker-dot" style="background:${col}"></div>${n !== myName ? `<span class="dest-picker-name" style="color:${col}">${n}</span>` : ''}</div>`;
+        }).join('')
+      }</div>` : '';
+      const matchBadge = isMatch ? `<span style="font-size:10px;margin-left:2px;">💕</span>` : '';
+      const checkMark = iMine ? `<span class="dest-check">✓</span>` : '';
+      c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>${checkMark}${dotsHtml}${matchBadge}`;
+      c.onclick = () => toggleDest(dest.n);
+      grid.appendChild(c);
+      setTimeout(() => c.style.opacity = '1', 30 + idx * 20);
+    });
+    lv3.appendChild(grid);
+  };
+
+  if (mm.travel_type === 'domestic') {
+    const themeData = DESTS.domestic[mm.sub_type] || {};
+    if (mm.sub_type2) {
+      // 특정 지역 선택 시 해당 지역만 표시
+      const info = themeData[mm.sub_type2];
+      if (info) renderGroup(info.l, info.d, info.e);
+    } else {
+      // 테마만 선택 시 모든 지역 표시
+      Object.entries(themeData).forEach(([id, info]) => {
+        renderGroup(info.l, info.d, info.e);
+      });
     }
-
-    // 누가 담았는지 점 표시
-    const dotsHtml = pickedBy.length > 0 ? `<div class="dest-pickers">${
-      pickedBy.map(n => {
-        const ni = pNames.indexOf(n);
-        return `<div class="dest-picker-dot" style="background:${isMatch?'var(--terra)':COLORS[ni%COLORS.length]}"></div>`;
-      }).join('')
-    }</div>` : '';
-
-    const matchBadge = isMatch ? `<span style="font-size:10px;margin-left:2px;">💕</span>` : '';
-
-    const checkMark = iMine ? `<span class="dest-check">✓</span>` : '';
-    c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>${checkMark}${dotsHtml}${matchBadge}`;
-    c.onclick = () => toggleDest(dest.n);
-    grid.appendChild(c);
-    setTimeout(() => c.style.opacity = '1', 30 + idx * 25);
-  });
-
-  lv3.appendChild(grid);
+  } else {
+    // 해외 여행
+    const dests = DESTS.international[mm.sub_type] || [];
+    renderGroup(null, dests);
+  }
 }
 
-async function toggleDest(name) {
+function toggleDest(name) {
   if (!myName) { toast('먼저 내 이름을 선택해주세요!'); return; }
-  const picks = { ...(state.mindmap.picks || {}) };
-  const mine = [...(picks[myName] || [])];
-  const idx = mine.indexOf(name);
+  const idx = localPicks.indexOf(name);
   if (idx > -1) {
-    mine.splice(idx, 1);
+    localPicks.splice(idx, 1);
     toast(`${name} 제거됨`);
   } else {
-    mine.push(name);
-    toast(`${name} 담겼어요 ✓`);
+    localPicks.push(name);
+    toast(`${name} 담겼어요 ✓ (저장 전)`);
   }
-  picks[myName] = mine;
+  renderMM();
+}
+
+async function savePicks() {
+  if (!myName) return;
+  const picks = { ...(state.mindmap.picks || {}) };
+  picks[myName] = [...localPicks];
   await syncState({ mindmap: { ...state.mindmap, picks } });
+  toast('저장 완료! 친구들에게 공유되었습니다 🎉');
+  renderMM();
 }
 
 let cartExpanded = false;
@@ -1318,7 +1409,8 @@ function showPicksSummary(mm) {
 }
 
 function renderCartBar(mm) {
-  const picks = mm.picks || {};
+  const picks = { ...(mm.picks || {}) };
+  if (myName) picks[myName] = localPicks;
   const pNames = Object.keys(state.participants || {});
   const allPicked = pNames.some(n => (picks[n] || []).length > 0);
   const cartBar = document.getElementById('cart-bar');
@@ -1384,7 +1476,7 @@ function renderCartBar(mm) {
         ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}</div>` : '<div class="cart-preview">원하는 여행지를 눌러서 담아봐요 👆</div>'}
       </div>
       <div class="cart-right">
-        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();cartExpanded=true;renderCartBar(state.mindmap||{});">완료 ✓</button>` : ''}
+        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();savePicks();" style="background:var(--terra);">저장 & 공유</button>` : ''}
         <div class="cart-arrow" style="transform:rotate(${cartExpanded?'180deg':'0deg'})">▲</div>
       </div>
     </div>
