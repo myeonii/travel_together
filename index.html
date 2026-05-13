@@ -258,7 +258,7 @@
     /* ── 마인드맵 ── */
     #mindmap-screen { padding: 20px; }
     .mm-wrap { max-width: 900px; margin: 0 auto; }
-    .mm-header { text-align: center; padding: 30px 0 36px; }
+    .mm-header { text-align: center; padding: 10px 0 20px; }
     .mm-dates { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
     .mm-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
     .mm-sub { color: var(--text-light); font-size: 14px; margin-bottom: 12px; }
@@ -598,6 +598,12 @@ CREATE POLICY "open" ON travel_rooms FOR ALL USING (true) WITH CHECK (true);</di
   </div>
 
   <div class="mm-wrap" style="padding:20px 20px 120px;">
+    <!-- 참여자 선택 -->
+    <div id="mm-participant-selector" style="text-align:center; margin-bottom:20px;">
+      <div style="font-size:12px; font-weight:700; color:var(--text-light); margin-bottom:8px;">현재 사용자</div>
+      <div id="mm-participants" style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;"></div>
+    </div>
+    
     <div class="mm-header">
       <div class="mm-dates" id="mm-dates"></div>
       <div class="mm-title">어떤 여행을 원해? 🤔</div>
@@ -1152,6 +1158,19 @@ function showMM() {
   document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display='none'; });
   document.getElementById('mindmap-screen').style.display = 'block';
 
+  // 참여자 선택 렌더링
+  const pWrap = document.getElementById('mm-participants');
+  pWrap.innerHTML = '';
+  Object.keys(state.participants || {}).forEach((n, i) => {
+    const c = COLORS[i % COLORS.length];
+    const el = document.createElement('div');
+    el.className = 'chip' + (n === myName ? ' me' : '');
+    el.style.cssText = `background:${c}18;color:${c}; border: 1.5px solid ${n === myName ? c : 'transparent'}`;
+    el.innerHTML = `<div class="chip-dot"></div>${n}`;
+    el.onclick = () => { myName = n; localStorage.setItem('tt_name_' + roomId, n); showMM(); toast(`${n}으로 설정!`); };
+    pWrap.appendChild(el);
+  });
+
   // 로컬 픽 초기화 (현재 사용자의 저장된 픽 가져오기)
   const mm = state.mindmap || { picks: {} };
   localPicks = [...(mm.picks && mm.picks[myName] ? mm.picks[myName] : [])];
@@ -1164,8 +1183,15 @@ function showMM() {
   const olaps = Object.entries(counts)
     .filter(([,c]) => c===names.length && names.length>=2)
     .map(([d])=>d).sort();
-  document.getElementById('mm-dates').textContent =
-    olaps.length ? `📅 겹치는 날짜: ${olaps.slice(0,5).join(', ')}${olaps.length>5?' 외 '+(olaps.length-5)+'일':''}` : '';
+  
+  const dEl = document.getElementById('mm-dates');
+  if (olaps.length > 0) {
+    dEl.innerHTML = `<div style="background:var(--amber-light); color:#92400e; padding:4px 12px; border-radius:100px; display:inline-block; font-size:12px; font-weight:700; border:1px solid var(--amber);">
+      ✨ 겹치는 날: <span style="color:#92400e;">${olaps.join(', ')}</span>
+    </div>`;
+  } else {
+    dEl.textContent = '';
+  }
 
   renderMM();
 }
@@ -1176,7 +1202,7 @@ function renderMM() {
   const picks = { ...(mm.picks || {}) };
   if (myName) picks[myName] = localPicks;
 
-  // 글로벌 요약 영역 업데이트 (내 픽 + 친구 픽 실시간 참고)
+  // 글로벌 요약 영역 업데이트 (친구 픽 실시간 참고)
   const gSummary = document.getElementById('mm-global-summary');
   const allPickedNames = [...new Set(Object.values(picks).flat())];
   const matches = allPickedNames.filter(dest =>
@@ -1186,19 +1212,6 @@ function renderMM() {
   if (allPickedNames.length > 0) {
     gSummary.style.display = 'block';
     let html = '';
-    
-    // 내 선택 (저장 전 상태 포함)
-    if (myName && localPicks.length > 0) {
-      html += `<div class="mm-summary-section">
-        <div class="mm-summary-label">🙋 내가 선택 중 (저장 전)</div>
-        <div class="mm-summary-chips">
-          ${localPicks.map(p => {
-            const isMatch = matches.includes(p);
-            return `<div class="mm-summary-chip ${isMatch ? 'match' : 'mine'}">${p}${isMatch ? ' 💕' : ''}</div>`;
-          }).join('')}
-        </div>
-      </div>`;
-    }
 
     // 친구들의 선택 (이미 저장된 상태)
     const others = pNames.filter(n => n !== myName);
@@ -1222,7 +1235,6 @@ function renderMM() {
   } else {
     gSummary.style.display = 'none';
   }
-
   // 레벨1 항상 표시
   const d = document.getElementById('nd-domestic');
   const i = document.getElementById('nd-intl');
@@ -1400,16 +1412,26 @@ function showLv3(mm) {
   }
 }
 
-function toggleDest(name) {
+async function toggleDest(name) {
   if (!myName) { toast('먼저 내 이름을 선택해주세요!'); return; }
-  const idx = localPicks.indexOf(name);
+  
+  const picks = { ...(state.mindmap.picks || {}) };
+  const currentPicks = picks[myName] || [];
+  const idx = currentPicks.indexOf(name);
+  
   if (idx > -1) {
-    localPicks.splice(idx, 1);
+    currentPicks.splice(idx, 1);
     toast(`${name} 제거됨`);
   } else {
-    localPicks.push(name);
-    toast(`${name} 담겼어요 ✓ (저장 전)`);
+    currentPicks.push(name);
+    toast(`${name} 담겼어요 ✓`);
   }
+  
+  picks[myName] = currentPicks;
+  await syncState({ mindmap: { ...state.mindmap, picks } });
+  
+  // localPicks도 동기화
+  localPicks = currentPicks;
   renderMM();
 }
 
@@ -1501,7 +1523,6 @@ function renderCartBar(mm) {
         ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}</div>` : '<div class="cart-preview">여행지를 클릭해서 담아보세요</div>'}
       </div>
       <div class="cart-right">
-        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();savePicks();" style="background:var(--terra);">저장</button>` : ''}
         <div class="cart-arrow" style="transform:rotate(${cartExpanded?'180deg':'0deg'})">▲</div>
       </div>
     </div>
@@ -1513,7 +1534,7 @@ async function backToDates() {
   document.getElementById('mindmap-screen').style.display = 'none';
   document.getElementById('cart-bar').style.display = 'none';
   cartExpanded = false;
-  await syncState({ step:'dates', mindmap:{} });
+  await syncState({ step:'dates' });
   show('room-screen');
   renderRoom();
 }
