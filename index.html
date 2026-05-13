@@ -151,7 +151,13 @@
       padding: 8px 16px; border-radius: 20px;
       font-size: 14px; font-weight: 600;
       cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
+      position: relative;
     }
+    .chip .remove-btn {
+      font-size: 12px; margin-left: 4px; opacity: 0.5;
+      padding: 0 4px; border-radius: 50%;
+    }
+    .chip .remove-btn:hover { opacity: 1; background: rgba(0,0,0,0.1); }
     .chip.me { border-color: currentColor; box-shadow: 0 0 0 3px rgba(59,107,90,0.12); }
     .chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
     .add-row { display: flex; gap: 8px; }
@@ -957,7 +963,7 @@ function renderRoom() {
     const el = document.createElement('div');
     el.className = 'chip' + (n === myName ? ' me' : '');
     el.style.cssText = `background:${c}18;color:${c}`;
-    el.innerHTML = `<div class="chip-dot"></div>${n}`;
+    el.innerHTML = `<div class="chip-dot"></div>${n}<span class="remove-btn" onclick="event.stopPropagation();removeParticipant('${n}')">×</span>`;
     el.onclick = () => { myName = n; localStorage.setItem('tt_name_' + roomId, n); renderRoom(); toast(`${n}으로 설정!`); };
     wrap.appendChild(el);
   });
@@ -976,6 +982,18 @@ async function addParticipant() {
   myName = name;
   localStorage.setItem('tt_name_' + roomId, name);
   renderRoom();
+}
+
+async function removeParticipant(name) {
+  const newP = { ...state.participants };
+  delete newP[name];
+  await syncState({ participants: newP });
+  if (myName === name) {
+    myName = null;
+    localStorage.removeItem('tt_name_' + roomId);
+  }
+  renderRoom();
+  toast(`${name} 삭제됨`);
 }
 
 // ─────────────────────────────
