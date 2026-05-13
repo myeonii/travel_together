@@ -127,8 +127,8 @@
     }
     .room-badge {
       background: var(--sage-light); color: var(--sage);
-      padding: 6px 14px; border-radius: 20px;
-      font-size: 13px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
       letter-spacing: 2px; cursor: pointer; transition: all 0.2s;
     }
     .room-badge:hover { background: var(--sage); color: white; }
@@ -260,7 +260,7 @@
     .mm-wrap { max-width: 900px; margin: 0 auto; }
     .mm-header { text-align: center; padding: 10px 0 20px; }
     .mm-dates { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
-    .mm-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .mm-title { font-size: 22px; font-weight: 700; margin-top: 10px; margin-bottom: 10px; }
     .mm-sub { color: var(--text-light); font-size: 14px; margin-bottom: 12px; }
 
     /* 글로벌 요약 영역 */
@@ -426,7 +426,7 @@
       transition: all 0.5s ease;
     }
     .booking-wrap.in { opacity: 1; transform: translateY(0); }
-    .booking-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .booking-title { font-size: 19px; font-weight: 700; margin-bottom: 8px; }
     .booking-desc { color: var(--text-light); margin-bottom: 24px; font-size: 14px; }
     .booking-links { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
     .blink {
@@ -1023,13 +1023,14 @@ function renderCal() {
   }));
 
   // 요일 헤더
-  '일월화수목금토'.split('').forEach(d => {
+  '월화수목금토일'.split('').forEach(d => {
     const h = document.createElement('div');
     h.className = 'cal-dh'; h.textContent = d;
     grid.appendChild(h);
   });
 
-  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  let firstDay = new Date(calYear, calMonth, 1).getDay();
+  firstDay = (firstDay === 0) ? 6 : firstDay - 1; // 0(일) -> 6, 1(월) -> 0...
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
   for (let i = 0; i < firstDay; i++) {
