@@ -1255,10 +1255,11 @@ function renderMM() {
   showPicksSummary(mm);
 
   if (mm.sub_type) {
-    if (mm.travel_type === 'domestic') {
+    if (mm.travel_type === 'domestic' && mm.sub_type !== 'custom') {
       showLv2b(mm);
       showLv3(mm); // 국내도 테마 선택 시 바로 하위 목록 노출
     } else {
+      ['lv2b-conn','lv2b'].forEach(id => { document.getElementById(id).style.display='none'; });
       showLv3(mm);
     }
   } else {
@@ -1298,7 +1299,8 @@ function showLv2(mm) {
     ? [{id:'sea',e:'🌊',l:'바다',d:'해수욕장 · 해산물'},
        {id:'city',e:'🏙️',l:'도시/문화',d:'역사 · 감성 · 먹방'},
        {id:'healing',e:'🌿',l:'힐링',d:'숲 · 차밭 · 섬'},
-       {id:'activity',e:'🎿',l:'액티비티',d:'스키 · 서핑 · 트레킹'}]
+       {id:'activity',e:'🎿',l:'액티비티',d:'스키 · 서핑 · 트레킹'},
+       {id:'custom',e:'✍️',l:'여기가자',d:'직접 입력하기'}]
 
     : [{id:'near',e:'🛫',l:'가까운 곳',d:'2~4시간 비행'},{id:'medium',e:'✈️',l:'적당한 거리',d:'4~7시간 비행'},
        {id:'far',e:'🌏',l:'멀어도 OK',d:'8시간+ 비행'}];
@@ -1314,7 +1316,11 @@ function showLv2(mm) {
 }
 
 async function pickSub(s) {
-  await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null } });
+  if (s === 'custom') {
+    await syncState({ mindmap: { ...state.mindmap, sub_type: 'custom', sub_type2: 'list' } });
+  } else {
+    await syncState({ mindmap: { ...state.mindmap, sub_type:s, sub_type2:null } });
+  }
 }
 
 function showLv2b(mm) {
@@ -1349,7 +1355,7 @@ function showLv3(mm) {
   const pNames = Object.keys(state.participants || {});
 
   // 렌더링 헬퍼 함수
-  const renderGroup = (groupLabel, dests, groupIcon) => {
+  const renderGroup = (groupLabel, dests, groupIcon, showAddBtn) => {
     if (groupLabel) {
       const header = document.createElement('div');
       header.className = 'mm-summary-label';
@@ -1391,19 +1397,54 @@ function showLv3(mm) {
       setTimeout(() => c.style.opacity = '1', 30 + idx * 20);
     });
     lv3.appendChild(grid);
+
+    if (showAddBtn) {
+      const addBtn = document.createElement('div');
+      addBtn.className = 'dest-card in';
+      addBtn.style.cssText = `
+        background: white; border: 2px dashed var(--sage);
+        color: var(--sage); padding: 8px 16px;
+        margin: 10px auto; display: flex;
+        justify-content: center; width: fit-content;
+      `;
+      addBtn.innerHTML = '<span class="dest-emoji">➕</span><div class="dest-name" style="margin-left:4px;">새 도시 추가</div>';
+      addBtn.onclick = () => {
+        const city = prompt('가고 싶은 도시를 입력하세요!');
+        if (city) {
+          const mm = { ...state.mindmap };
+          if (!mm.picks) mm.picks = {};
+          if (!mm.picks[myName]) mm.picks[myName] = [];
+          if (!mm.picks[myName].includes(city)) {
+            mm.picks[myName].push(city);
+            localPicks = mm.picks[myName];
+            syncState({ mindmap: mm }).then(renderMM);
+          }
+        }
+      };
+      lv3.appendChild(addBtn);
+    }
   };
 
   if (mm.travel_type === 'domestic') {
-    const themeData = DESTS.domestic[mm.sub_type] || {};
-    if (mm.sub_type2) {
-      // 특정 지역 선택 시 해당 지역만 표시
-      const info = themeData[mm.sub_type2];
-      if (info) renderGroup(info.l, info.d, info.e);
+    if (mm.sub_type === 'custom') {
+      // 커스텀 여행지 수집 (모든 참여자의 커스텀 픽을 모음)
+      const allCustom = [];
+      pNames.forEach(n => (picks[n] || []).forEach(p => {
+        if (!allCustom.includes(p)) allCustom.push(p);
+      }));
+      renderGroup('직접 입력한 여행지', allCustom.map(n => ({ n, e: '✨' })), '✍️', true);
     } else {
-      // 테마만 선택 시 모든 지역 표시
-      Object.entries(themeData).forEach(([id, info]) => {
-        renderGroup(info.l, info.d, info.e);
-      });
+      const themeData = DESTS.domestic[mm.sub_type] || {};
+      if (mm.sub_type2) {
+        // 특정 지역 선택 시 해당 지역만 표시
+        const info = themeData[mm.sub_type2];
+        if (info) renderGroup(info.l, info.d, info.e);
+      } else {
+        // 테마만 선택 시 모든 지역 표시
+        Object.entries(themeData).forEach(([id, info]) => {
+          renderGroup(info.l, info.d, info.e);
+        });
+      }
     }
   } else {
     // 해외 여행
