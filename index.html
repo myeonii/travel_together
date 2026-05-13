@@ -1240,6 +1240,8 @@ function renderMM() {
     ['lv2-conn','lv2','lv2b-conn','lv2b','lv3-conn','lv3'].forEach(id => { document.getElementById(id).style.display='none'; });
   }
 
+  showPicksSummary(mm);
+
   if (mm.sub_type) {
     if (mm.travel_type === 'domestic') {
       showLv2b(mm);
@@ -1253,13 +1255,7 @@ function renderMM() {
 
   if (mm.sub_type2) showLv3(mm);
   // (기존 else if mm.travel_type === 'domestic' 관련 lv3 숨김 로직 제거)
-
-  // picks는 항상 렌더 (lv3 열려있을 때)
-  if (mm.sub_type2 || (mm.travel_type === 'international' && mm.sub_type)) {
-    showPicksSummary(mm);
-  } else {
-    document.getElementById('picks-summary').style.display = 'none';
-  }
+  
   document.getElementById('booking').style.display = 'none';
 }
 
@@ -1502,10 +1498,10 @@ function renderCartBar(mm) {
           ${myName ? `<div class="cart-badge" style="background:${COLORS[pNames.indexOf(myName) % COLORS.length]}">내 픽 ${myPicks.length}개</div>` : ''}
           ${matches.length > 0 ? `<div class="cart-badge" style="background:var(--terra)">💕 ${matches.length}개 매치</div>` : ''}
         </div>
-        ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}</div>` : '<div class="cart-preview">원하는 여행지를 눌러서 담아봐요 👆</div>'}
+        ${myPicks.length > 0 ? `<div class="cart-preview">${myPicksPreview}</div>` : '<div class="cart-preview">여행지를 클릭해서 담아보세요</div>'}
       </div>
       <div class="cart-right">
-        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();savePicks();" style="background:var(--terra);">저장 & 공유</button>` : ''}
+        ${myPicks.length > 0 ? `<button class="cart-done-btn" onclick="event.stopPropagation();savePicks();" style="background:var(--terra);">저장</button>` : ''}
         <div class="cart-arrow" style="transform:rotate(${cartExpanded?'180deg':'0deg'})">▲</div>
       </div>
     </div>
