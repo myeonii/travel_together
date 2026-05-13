@@ -1357,18 +1357,24 @@ function showLv3(mm) {
 
   // 렌더링 헬퍼 함수
   const renderGroup = (groupLabel, dests, groupIcon, showAddBtn) => {
+    const container = document.createElement('div');
+    container.className = 'card';
+    container.style.padding = '16px';
+    container.style.marginBottom = '20px';
+
     if (groupLabel) {
       const header = document.createElement('div');
       header.className = 'mm-summary-label';
       header.style.textAlign = 'center';
-      header.style.margin = '20px 0 10px';
+      header.style.margin = '0 0 16px';
       header.innerHTML = `${groupIcon || '📍'} ${groupLabel}`;
-      lv3.appendChild(header);
+      container.appendChild(header);
     }
 
     const grid = document.createElement('div');
     grid.className = 'dest-grid';
     dests.forEach((dest, idx) => {
+      // ... (existing grid population logic)
       const pickedBy = pNames.filter(n => (picks[n] || []).includes(dest.n));
       const iMine = myName && (picks[myName] || []).includes(dest.n);
       const isMatch = pickedBy.length >= 2;
@@ -1392,23 +1398,22 @@ function showLv3(mm) {
       }</div>` : '';
       const matchBadge = isMatch ? `<span style="font-size:10px;margin-left:2px;">💕</span>` : '';
       const checkMark = iMine ? `<span class="dest-check">✓</span>` : '';
-      c.innerHTML = `<span class="dest-emoji">${dest.e}</span><div class="dest-name">${dest.n}</div>${checkMark}${dotsHtml}${matchBadge}`;
+      const emojiHtml = dest.e ? `<span class="dest-emoji">${dest.e}</span>` : '';
+      c.innerHTML = `${emojiHtml}<div class="dest-name">${dest.n}</div>${checkMark}${dotsHtml}${matchBadge}`;
       c.onclick = () => toggleDest(dest.n);
       grid.appendChild(c);
       setTimeout(() => c.style.opacity = '1', 30 + idx * 20);
     });
-    lv3.appendChild(grid);
 
     if (showAddBtn) {
       const addBtn = document.createElement('div');
       addBtn.className = 'dest-card in';
       addBtn.style.cssText = `
-        background: white; border: 2px dashed var(--sage);
-        color: var(--sage); padding: 8px 16px;
-        margin: 10px auto; display: flex;
-        justify-content: center; width: fit-content;
+        background: white; border: 2.2px dashed var(--sage);
+        color: var(--sage); padding: 6px 13px;
+        display: flex; align-items: center; cursor: pointer;
       `;
-      addBtn.innerHTML = '<span class="dest-emoji">➕</span><div class="dest-name" style="margin-left:4px;">새 도시 추가</div>';
+      addBtn.innerHTML = '<span class="dest-emoji">➕</span><div class="dest-name" style="margin-left:2px;">추가</div>';
       addBtn.onclick = () => {
         const city = prompt('가고 싶은 도시를 입력하세요!');
         if (city) {
@@ -1422,16 +1427,30 @@ function showLv3(mm) {
           }
         }
       };
-      lv3.appendChild(addBtn);
+      grid.appendChild(addBtn);
     }
+
+    container.appendChild(grid);
+    lv3.appendChild(container);
   };
 
   if (mm.travel_type === 'domestic') {
     if (mm.sub_type === 'custom') {
       // 커스텀 여행지 수집 (모든 참여자의 커스텀 픽을 모음)
+      // 기존 테마에 있는 여행지는 제외하고 진짜 직접 입력한 것만 필터링
+      const allPredefined = [];
+      Object.values(DESTS.domestic).forEach(theme => {
+        Object.values(theme).forEach(region => {
+          if (region.d) region.d.forEach(dest => allPredefined.push(dest.n));
+        });
+      });
+      Object.values(DESTS.international).forEach(region => {
+        if (Array.isArray(region)) region.forEach(dest => allPredefined.push(dest.n));
+      });
+
       const allCustom = [];
       pNames.forEach(n => (picks[n] || []).forEach(p => {
-        if (!allCustom.includes(p)) allCustom.push(p);
+        if (!allCustom.includes(p) && !allPredefined.includes(p)) allCustom.push(p);
       }));
       renderGroup('직접 입력한 여행지', allCustom.map(n => ({ n, e: '✨' })), '✍️', true);
     } else {
